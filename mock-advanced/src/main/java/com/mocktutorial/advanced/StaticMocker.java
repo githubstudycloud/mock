@@ -1,5 +1,7 @@
 package com.mocktutorial.advanced;
 
+import com.mocktutorial.advanced.agent.StaticMethodAgent;
+
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,17 +18,29 @@ public class StaticMocker {
     private static final Map<Class<?>, Map<String, Object>> staticMethodReturns = new ConcurrentHashMap<>();
     
     /**
+     * Special value indicating that the original method should be called.
+     * This is used internally and should not be returned from custom implementations.
+     */
+    public static final Object PROCEED = new Object();
+    
+    /**
      * Prepares a class for static method mocking.
      * 
      * @param classToMock the class to prepare for static mocking
      */
     public static void prepareForStaticMocking(Class<?> classToMock) {
         try {
-            // In a real implementation, this would use bytecode manipulation to
-            // modify the class's static methods at runtime
-            // For now, we'll just set up the tracking structures
+            // Set up the tracking structures
             staticMethodReturns.putIfAbsent(classToMock, new ConcurrentHashMap<>());
-            logger.info("Prepared class for static mocking: {}", classToMock.getName());
+            
+            // Modify the class bytecode to redirect static method calls
+            boolean modified = StaticMethodAgent.modifyClass(classToMock);
+            
+            if (modified) {
+                logger.info("Prepared class for static mocking: {}", classToMock.getName());
+            } else {
+                logger.warn("Failed to prepare class for static mocking: {}", classToMock.getName());
+            }
         } catch (Exception e) {
             logger.error("Failed to prepare class for static mocking: " + classToMock.getName(), e);
             throw new RuntimeException("Failed to prepare for static mocking", e);
@@ -43,7 +57,8 @@ public class StaticMocker {
      * @param returnValue the value to return when the method is called
      */
     public static <T, R> void when(Class<T> clazz, String methodName, R returnValue) {
-        Map<String, Object> methodMap = staticMethodReturns.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>());
+        ensurePrepared(clazz);
+        Map<String, Object> methodMap = staticMethodReturns.get(clazz);
         methodMap.put(methodName, returnValue);
         logger.debug("Configured static method {} in class {} to return {}", methodName, clazz.getName(), returnValue);
     }
@@ -57,7 +72,8 @@ public class StaticMocker {
      * @param throwable the exception to throw when the method is called
      */
     public static <T> void whenThrow(Class<T> clazz, String methodName, Throwable throwable) {
-        Map<String, Object> methodMap = staticMethodReturns.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>());
+        ensurePrepared(clazz);
+        Map<String, Object> methodMap = staticMethodReturns.get(clazz);
         methodMap.put(methodName, throwable);
         logger.debug("Configured static method {} in class {} to throw {}", methodName, clazz.getName(), throwable);
     }
@@ -72,20 +88,21 @@ public class StaticMocker {
      * @param implementation the function to execute when the method is called
      */
     public static <T, R> void whenImplement(Class<T> clazz, String methodName, Function<Object[], R> implementation) {
-        Map<String, Object> methodMap = staticMethodReturns.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>());
+        ensurePrepared(clazz);
+        Map<String, Object> methodMap = staticMethodReturns.get(clazz);
         methodMap.put(methodName, implementation);
         logger.debug("Configured static method {} in class {} with custom implementation", methodName, clazz.getName());
     }
     
     /**
      * Handles a static method call.
-     * This method would be called from the bytecode-modified static methods.
+     * This method is called from the bytecode-modified static methods.
      * 
      * @param <R> the return type of the method
      * @param clazz the class containing the static method
      * @param methodName the name of the static method
      * @param args the arguments passed to the method
-     * @return the configured return value or the result of the original method
+     * @return the configured return value or PROCEED to indicate the original method should be called
      * @throws Throwable if a configured exception is thrown
      */
     @SuppressWarnings("unchecked")
@@ -103,10 +120,21 @@ public class StaticMocker {
             }
         }
         
-        // If no mock configuration is found, we would normally call the original method
-        // In a real implementation, this would be handled by bytecode manipulation
-        logger.warn("No mock configuration found for static method {} in class {}", methodName, clazz.getName());
-        return null;
+        // If no mock configuration is found, indicate that the original method should be called
+        logger.debug("No mock configuration found for static method {} in class {}, proceeding with original", 
+                    methodName, clazz.getName());
+        return (R) PROCEED;
+    }
+    
+    /**
+     * Ensures that a class is prepared for static method mocking.
+     * 
+     * @param clazz the class to prepare
+     */
+    private static void ensurePrepared(Class<?> clazz) {
+        if (!staticMethodReturns.containsKey(clazz)) {
+            prepareForStaticMocking(clazz);
+        }
     }
     
     /**
@@ -114,6 +142,7 @@ public class StaticMocker {
      */
     public static void resetAll() {
         staticMethodReturns.clear();
+        StaticMethodAgent.reset();
         logger.info("Reset all static method mocks");
     }
     
