@@ -58,7 +58,7 @@ public class MockitoAdapter {
         private final Map<String, Object> methodReturns = new HashMap<>();
         public final Map<MethodCallKey, java.util.List<Object[]>> methodCalls = new HashMap<>();
         // 新增：记录每个方法调用的存根行为（用于存根）
-        private final Map<MethodCallKey, StubBehavior> stubs = new HashMap<>();
+        final Map<MethodCallKey, StubBehavior> stubs = new HashMap<>();
 
         // 方法调用唯一标识
         public static class MethodCallKey {

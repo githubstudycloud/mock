@@ -78,7 +78,7 @@ public class MockCreator {
         // Add mock tracking fields
         enhancedClass.addField(CtField.make("private static final java.util.Map _methodCalls = new java.util.HashMap();", enhancedClass));
         enhancedClass.addField(CtField.make("private static final java.util.Map _methodReturns = new java.util.HashMap();", enhancedClass));
-        enhancedClass.addField(CtField.make("private static final java.util.Map _methodStubs = new java.util.HashMap();", enhancedClass));
+        enhancedClass.addField(CtField.make("public static final java.util.Map _methodStubs = new java.util.HashMap();", enhancedClass));
         
         // Override methods based on settings
         overrideMethods(enhancedClass, originalClass, settings);
