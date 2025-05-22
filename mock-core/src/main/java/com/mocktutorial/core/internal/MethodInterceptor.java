@@ -6,9 +6,21 @@ import java.util.function.Function;
 import com.mocktutorial.core.Mock;
 
 /**
- * Intercepts method calls on mock objects for stubbing and verification.
- * 
- * @param <T> the type of the mock
+ * 【已更新V2】
+ * mock方法行为存根和自定义实现的链式配置器。
+ * <ul>
+ *   <li>支持thenReturn/thenThrow/thenImplement链式API。</li>
+ *   <li>所有存根均为本mock实例独立，无全局状态。</li>
+ *   <li>支持接口和类的mock，底层自动区分JDK Proxy和字节码增强。</li>
+ * </ul>
+ * <p>
+ * 典型用法：
+ * <pre>
+ *   Mock.when(mock, "findById", 1L).thenReturn(Optional.of(user));
+ *   Mock.when(mock, "findById", 2L).thenThrow(new RuntimeException());
+ *   Mock.when(mock, "findById", 3L).thenImplement(args -> ...);
+ * </pre>
+ * @param <T> mock类型
  */
 public class MethodInterceptor<T> {
     private final T mock;
@@ -16,9 +28,11 @@ public class MethodInterceptor<T> {
     private final Object[] args;
     
     /**
-     * Creates a new method interceptor for the given mock.
-     * 
-     * @param mock the mock object
+     * 【已更新V2】
+     * 创建方法拦截器，内部用于注册存根。
+     * @param mock mock对象
+     * @param methodName 方法名
+     * @param args 方法参数
      */
     public MethodInterceptor(T mock, String methodName, Object[] args) {
         this.mock = mock;
@@ -27,11 +41,11 @@ public class MethodInterceptor<T> {
     }
     
     /**
-     * Configures a method to return the specified value.
-     * 
-     * @param <R> the return type of the method
-     * @param returnValue the value to return
-     * @return a result builder for additional configuration
+     * 【已更新V2】
+     * 配置方法返回指定值。
+     * @param <R> 返回类型
+     * @param returnValue 返回值
+     * @return ResultBuilder，可继续链式配置
      */
     @SuppressWarnings("unchecked")
     public <R> ResultBuilder<R> thenReturn(R returnValue) {
@@ -52,10 +66,10 @@ public class MethodInterceptor<T> {
     }
     
     /**
-     * Configures a method to throw the specified exception.
-     * 
-     * @param throwable the exception to throw
-     * @return a result builder for additional configuration
+     * 【已更新V2】
+     * 配置方法抛出指定异常。
+     * @param throwable 要抛出的异常
+     * @return ResultBuilder，可继续链式配置
      */
     @SuppressWarnings("unchecked")
     public <R> ResultBuilder<R> thenThrow(Throwable throwable) {
@@ -76,11 +90,11 @@ public class MethodInterceptor<T> {
     }
     
     /**
-     * Configures a method to use the specified implementation.
-     * 
-     * @param <R> the return type of the method
-     * @param implementation the function to execute when the method is called
-     * @return a result builder for additional configuration
+     * 【已更新V2】
+     * 配置方法自定义实现。
+     * @param <R> 返回类型
+     * @param implementation 实现函数，参数为方法参数数组
+     * @return ResultBuilder，可继续链式配置
      */
     @SuppressWarnings("unchecked")
     public <R> ResultBuilder<R> thenImplement(Function<Object[], R> implementation) {
@@ -101,9 +115,9 @@ public class MethodInterceptor<T> {
     }
     
     /**
-     * Builder for configuring method results.
-     * 
-     * @param <R> the return type of the method
+     * 【已更新V2】
+     * 存根结果链式配置器。
+     * @param <R> 返回类型
      */
     public static class ResultBuilder<R> {
         private final R methodReturnValue;
@@ -113,9 +127,8 @@ public class MethodInterceptor<T> {
         }
         
         /**
-         * Gets the original method return value.
-         * 
-         * @return the method return value
+         * 获取原始方法返回值（一般用于链式扩展）。
+         * @return 方法返回值
          */
         public R getMethodReturnValue() {
             return methodReturnValue;

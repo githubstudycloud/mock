@@ -13,32 +13,44 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Adapter for using Mockito as a fallback when enhanced mocking isn't available or enabled.
- * In a real implementation, this would use actual Mockito methods, but to keep things simple,
- * we'll implement a basic JDK proxy-based mock here.
+ * 【已更新V2】
+ * 当未启用增强mock时，作为回退方案的适配器。接口类型用JDK Proxy实现，类类型仅支持无参构造简单mock。
+ * <p>
+ * 设计要点：
+ * <ul>
+ *   <li>所有行为存根和调用记录均为每个mock实例独立，无全局状态。</li>
+ *   <li>支持链式API，行为存根优先于默认返回值。</li>
+ *   <li>集合类型方法（isEmpty/size/contains/iterator）有特殊默认返回，避免NPE。</li>
+ * </ul>
+ * <p>
+ * 典型用法：
+ * <pre>
+ *   List mockList = Mock.mock(List.class);
+ *   Mock.when(mockList, "size").thenReturn(10);
+ *   assertEquals(10, mockList.size());
+ * </pre>
  */
 public class MockitoAdapter {
     private static final Logger logger = LoggerFactory.getLogger(MockitoAdapter.class);
     
     /**
-     * Creates a mock instance of the given class.
-     * 
-     * @param <T> the type to mock
-     * @param classToMock the class to create a mock of
-     * @return a mock instance
+     * 【已更新V2】
+     * 创建指定类型的mock对象。接口用JDK Proxy，类仅支持无参构造。
+     * @param <T> 要mock的类型
+     * @param classToMock 要mock的类或接口
+     * @return mock实例
      */
     @SuppressWarnings("unchecked")
     public static <T> T createMock(Class<T> classToMock) {
         if (classToMock.isInterface()) {
-            // For interfaces, use JDK dynamic proxies
+            // 接口类型用JDK Proxy
             return (T) Proxy.newProxyInstance(
                     classToMock.getClassLoader(),
                     new Class<?>[] { classToMock },
                     new MockInvocationHandler(classToMock)
             );
         } else {
-            // For classes, attempt to create a simple instance
-            // In a real implementation, we would use a specialized library for subclassing
+            // 类类型仅支持无参构造
             try {
                 Constructor<T> constructor = classToMock.getDeclaredConstructor();
                 constructor.setAccessible(true);
@@ -51,7 +63,13 @@ public class MockitoAdapter {
     }
     
     /**
-     * Simple invocation handler for the JDK proxy.
+     * 【已更新V2】
+     * JDK Proxy的InvocationHandler实现，支持行为存根、调用记录、默认返回值。
+     * <ul>
+     *   <li>存根优先：如有thenReturn/thenThrow/thenImplement，优先返回存根结果。</li>
+     *   <li>集合方法特殊处理：isEmpty/size/contains/iterator有合理默认值。</li>
+     *   <li>所有行为和调用记录均为本mock实例独立。</li>
+     * </ul>
      */
     public static class MockInvocationHandler implements InvocationHandler {
         private final Class<?> mockedInterface;
@@ -59,8 +77,10 @@ public class MockitoAdapter {
         public final Map<MethodCallKey, java.util.List<Object[]>> methodCalls = new HashMap<>();
         // 新增：记录每个方法调用的存根行为（用于存根）
         public final Map<MethodCallKey, StubBehavior> stubs = new HashMap<>();
-
-        // 方法调用唯一标识
+        /**
+         * 【已更新V2】
+         * 方法调用唯一标识，包含方法名和参数。
+         */
         public static class MethodCallKey {
             private final String methodName;
             private final Object[] args;
@@ -82,7 +102,10 @@ public class MockitoAdapter {
                 return result;
             }
         }
-        // 存根行为封装
+        /**
+         * 【已更新V2】
+         * 存根行为封装，支持返回值、异常、实现函数。
+         */
         public static class StubBehavior {
             Object returnValue;
             Throwable throwable;
@@ -93,9 +116,13 @@ public class MockitoAdapter {
             this.mockedInterface = mockedInterface;
         }
         
+        /**
+         * 【已更新V2】
+         * 方法调用拦截逻辑：优先返回存根，其次处理集合方法，最后返回类型默认值。
+         */
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            // Handle Object methods like equals, hashCode, and toString
+            // equals/hashCode/toString特殊处理
             if (method.getName().equals("equals")) {
                 return proxy == args[0];
             } else if (method.getName().equals("hashCode")) {
@@ -103,11 +130,9 @@ public class MockitoAdapter {
             } else if (method.getName().equals("toString")) {
                 return "Mock of " + mockedInterface.getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
             }
-
             // 记录方法调用（用于验证）
             MethodCallKey callKey = new MethodCallKey(method.getName(), args);
             methodCalls.computeIfAbsent(callKey, k -> new java.util.ArrayList<>()).add(args);
-
             // 1. 优先查找 stub
             StubBehavior stub = stubs.get(callKey);
             if (stub != null) {
@@ -115,9 +140,7 @@ public class MockitoAdapter {
                 if (stub.implementation != null) return stub.implementation.apply(args);
                 return stub.returnValue;
             }
-
             // 2. 处理 Collection 的常用方法
-            Class<?> declaringClass = method.getDeclaringClass();
             String methodName = method.getName();
             if (java.util.Collection.class.isAssignableFrom(mockedInterface) ||
                 java.util.List.class.isAssignableFrom(mockedInterface) ||
@@ -132,17 +155,14 @@ public class MockitoAdapter {
                     return java.util.Collections.emptyIterator();
                 }
             }
-
             // 3. 默认返回值
             Object result = getDefaultReturnValue(method.getReturnType());
             return result;
         }
         
         /**
-         * 获取方法返回类型的默认值
-         *
-         * @param returnType 返回类型
-         * @return 默认值
+         * 【已更新V2】
+         * 获取方法返回类型的默认值。对Optional/集合/布尔等类型有合理默认。
          */
         public Object getDefaultReturnValue(Class<?> returnType) {
             if (returnType.equals(void.class)) {
@@ -183,7 +203,7 @@ public class MockitoAdapter {
             return null;
         }
 
-        // 提供存根注册方法
+        // 存根注册方法（供Mock/MethodInterceptor调用）
         public void setStub(String methodName, Object[] args, Object returnValue) {
             MethodCallKey key = new MethodCallKey(methodName, args);
             StubBehavior stub = new StubBehavior();

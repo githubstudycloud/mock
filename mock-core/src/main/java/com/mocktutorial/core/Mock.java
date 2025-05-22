@@ -6,81 +6,93 @@ import com.mocktutorial.core.internal.MockCreator;
 import com.mocktutorial.core.internal.MockSettings;
 
 /**
- * Main entry point for the enhanced mock framework.
- * This class provides static methods to create and configure mocks.
+ * 【已更新V2】
+ * Enhanced Mock 框架的主入口。所有mock对象的创建、行为存根、验证等操作均从此类开始。
+ * <p>
+ * 设计理念：
+ * <ul>
+ *   <li>所有mock行为和调用记录均为"每个mock实例独立"，无全局/ThreadLocal状态，测试隔离性强。</li>
+ *   <li>API风格统一，链式调用，易于新手理解和使用。</li>
+ *   <li>支持接口和类的mock，静态/私有/构造函数mock需参考高级用法。</li>
+ * </ul>
+ * <p>
+ * 典型用法：
+ * <pre>
+ *   UserService mock = Mock.mock(UserService.class);
+ *   Mock.when(mock, "findById", 1L).thenReturn(Optional.of(user));
+ *   Mock.verify(mock).once().findById(1L);
+ * </pre>
  */
 public class Mock {
     
     /**
-     * Creates a mock instance of the given class.
-     * 
-     * @param <T> the type to mock
-     * @param classToMock the class to create a mock of
-     * @return a mock instance
+     * 【已更新V2】
+     * 创建指定类型的mock对象。mock对象的行为和调用记录仅影响本实例。
+     * @param <T> 要mock的类型
+     * @param classToMock 要mock的类或接口
+     * @return mock实例
      */
     public static <T> T mock(Class<T> classToMock) {
         return mock(classToMock, new MockSettings());
     }
     
     /**
-     * Creates a mock instance of the given class with specified settings.
-     * 
-     * @param <T> the type to mock
-     * @param classToMock the class to create a mock of
-     * @param settings the mock settings
-     * @return a mock instance
+     * 【已更新V2】
+     * 创建带有自定义设置的mock对象。可通过MockSettings启用静态/私有/构造函数等高级mock。
+     * @param <T> 要mock的类型
+     * @param classToMock 要mock的类或接口
+     * @param settings mock配置
+     * @return mock实例
      */
     public static <T> T mock(Class<T> classToMock, MockSettings settings) {
-        // Default implementation uses Mockito adapter for now
-        // This will be replaced with our own implementation
         if (!settings.isEnhancedMockEnabled()) {
             return MockitoAdapter.createMock(classToMock);
         }
-        
-        // Use our own mock creation logic when enhanced mode is enabled
         return MockCreator.createMock(classToMock, settings);
     }
     
     /**
-     * Creates a new settings builder for configuring mocks.
-     * 
-     * @return a new mock settings instance
+     * 【已更新V2】
+     * 创建一个新的MockSettings，用于链式配置mock行为（如启用静态/私有方法mock等）。
+     * @return MockSettings实例
      */
     public static MockSettings withSettings() {
         return new MockSettings();
     }
     
     /**
-     * Prepares for method stubbing.
-     * Use this to define behavior for method calls on mocks.
-     * 
-     * @param <T> the type of the return value
-     * @param mock the mock object
-     * @param methodName the name of the method to be stubbed
-     * @param args the arguments to the method
-     * @return the method interceptor for chaining
+     * 【已更新V2】
+     * 配置mock对象的某个方法的行为（存根）。
+     * <p>
+     * 例：Mock.when(mock, "findById", 1L).thenReturn(Optional.of(user));
+     * @param <T> 返回值类型
+     * @param mock mock对象
+     * @param methodName 方法名
+     * @param args 方法参数
+     * @return MethodInterceptor，可继续链式thenReturn/thenThrow/thenImplement
      */
     public static <T> MethodInterceptor<T> when(T mock, String methodName, Object... args) {
         return new MethodInterceptor<>(mock, methodName, args);
     }
     
     /**
-     * Prepares for method verification.
-     * Use this to verify if specific methods were called on mocks.
-     * 
-     * @param <T> the type of the mock
-     * @param mock the mock object
-     * @return a verification builder
+     * 【已更新V2】
+     * 验证mock对象的某个方法是否被调用过。支持once/never/times(n)等链式调用。
+     * <p>
+     * 例：Mock.verify(mock).once().findById(1L);
+     * @param <T> mock类型
+     * @param mock mock对象
+     * @return VerificationBuilder，可继续链式调用
      */
     public static <T> VerificationBuilder<T> verify(T mock) {
         return new VerificationBuilder<>(mock);
     }
     
     /**
-     * Resets a mock to its initial state.
-     * 
-     * @param <T> the type of the mock
-     * @param mock the mock object to reset
+     * 【已更新V2】
+     * 重置mock对象的所有行为存根和调用记录。仅影响本mock实例，不影响其他mock。
+     * @param <T> mock类型
+     * @param mock 要重置的mock对象
      */
     public static <T> void reset(T mock) {
         if (mock == null) return;
@@ -108,9 +120,9 @@ public class Mock {
     }
     
     /**
-     * Builder class for verification operations.
-     * 
-     * @param <T> the type of the mock
+     * 【已更新V2】
+     * 用于链式验证mock方法调用次数的构建器。支持once/never/times(n)等语义。
+     * @param <T> mock类型
      */
     public static class VerificationBuilder<T> {
         private final T mock;
@@ -122,23 +134,44 @@ public class Mock {
             this.mock = mock;
         }
 
+        /**
+         * 期望方法被调用1次。
+         * @return 代理mock对象
+         */
         public T once() {
             this.expectedTimes = 1;
             return createProxy();
         }
+        /**
+         * 期望方法从未被调用。
+         * @return 代理mock对象
+         */
         public T never() {
             this.expectedTimes = 0;
             return createProxy();
         }
+        /**
+         * 期望方法被调用指定次数。
+         * @param times 次数
+         * @return 代理mock对象
+         */
         public T times(int times) {
             this.expectedTimes = times;
             return createProxy();
         }
+        /**
+         * 不限制调用次数，仅做存在性验证。
+         * @return 代理mock对象
+         */
         public T get() {
             this.expectedTimes = -1;
             return createProxy();
         }
-        // 创建代理，拦截方法调用，检查调用次数
+        /**
+         * 【已更新V2】
+         * 创建代理对象，拦截方法调用并检查调用次数。
+         * @return 代理mock对象
+         */
         @SuppressWarnings("unchecked")
         private T createProxy() {
             return (T) java.lang.reflect.Proxy.newProxyInstance(
