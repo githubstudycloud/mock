@@ -20,104 +20,102 @@ class ManualMockUserServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Create the mock service
+        System.out.println("[ManualMock] 初始化mockService和userController");
         mockService = new ManualMockUserService();
-        
-        // Add test data
         mockService.addMockUser(new User(1L, "John Doe", "john@example.com"));
         mockService.addMockUser(new User(2L, "Jane Smith", "jane@example.com"));
-        
-        // Create controller with mock service
         userController = new UserController(mockService);
     }
 
     @Test
     void testFindById() {
-        // Test finding an existing user
+        System.out.println("[ManualMock] 测试findById(1L)预期有值");
         Optional<User> user = mockService.findById(1L);
-        assertTrue(user.isPresent());
-        assertEquals("John Doe", user.get().getName());
-        
-        // Test finding a non-existent user
+        System.out.println("实际: " + user);
+        assertTrue(user.isPresent(), "findById(1L)应有值");
+        assertEquals("John Doe", user.get().getName(), "findById(1L)应为John Doe");
+        System.out.println("[通过] findById(1L)返回John Doe");
+        System.out.println("[ManualMock] 测试findById(999L)预期无值");
         Optional<User> nonExistentUser = mockService.findById(999L);
-        assertFalse(nonExistentUser.isPresent());
+        System.out.println("实际: " + nonExistentUser);
+        assertFalse(nonExistentUser.isPresent(), "findById(999L)应无值");
+        System.out.println("[通过] findById(999L)无值");
     }
 
     @Test
     void testSaveUser() {
-        // Create a new user
+        System.out.println("[ManualMock] 测试saveUser");
         User newUser = new User(3L, "Bob Johnson", "bob@example.com");
-        
-        // Save the user
         boolean result = mockService.saveUser(newUser);
-        
-        // Verify the save was successful
-        assertTrue(result);
-        assertTrue(mockService.verifySavedUser(newUser));
-        
-        // Verify the user can be retrieved
+        System.out.println("saveUser实际: " + result);
+        assertTrue(result, "saveUser应返回true");
+        assertTrue(mockService.verifySavedUser(newUser), "verifySavedUser应为true");
+        System.out.println("[通过] saveUser和verifySavedUser");
         Optional<User> savedUser = mockService.findById(3L);
-        assertTrue(savedUser.isPresent());
-        assertEquals("Bob Johnson", savedUser.get().getName());
+        System.out.println("findById(3L)实际: " + savedUser);
+        assertTrue(savedUser.isPresent(), "findById(3L)应有值");
+        assertEquals("Bob Johnson", savedUser.get().getName(), "findById(3L)应为Bob Johnson");
+        System.out.println("[通过] findById(3L)返回Bob Johnson");
     }
 
     @Test
     void testDeleteUser() {
-        // Delete an existing user
+        System.out.println("[ManualMock] 测试deleteUser(1L)");
         boolean result = mockService.deleteUser(1L);
-        
-        // Verify the delete was successful
-        assertTrue(result);
-        assertTrue(mockService.verifyDeletedUser(1L));
-        
-        // Verify the user can no longer be retrieved
+        System.out.println("deleteUser(1L)实际: " + result);
+        assertTrue(result, "deleteUser(1L)应返回true");
+        assertTrue(mockService.verifyDeletedUser(1L), "verifyDeletedUser应为true");
+        System.out.println("[通过] deleteUser(1L)和verifyDeletedUser");
         Optional<User> deletedUser = mockService.findById(1L);
-        assertFalse(deletedUser.isPresent());
-        
-        // Test deleting a non-existent user
+        System.out.println("findById(1L)实际: " + deletedUser);
+        assertFalse(deletedUser.isPresent(), "findById(1L)应无值");
+        System.out.println("[通过] findById(1L)无值");
+        System.out.println("[ManualMock] 测试deleteUser(999L)");
         boolean failedResult = mockService.deleteUser(999L);
-        assertFalse(failedResult);
+        System.out.println("deleteUser(999L)实际: " + failedResult);
+        assertFalse(failedResult, "deleteUser(999L)应返回false");
+        System.out.println("[通过] deleteUser(999L)返回false");
     }
 
     @Test
     void testFindAllUsers() {
-        // Get all users
+        System.out.println("[ManualMock] 测试findAllUsers");
         List<User> allUsers = mockService.findAllUsers();
-        
-        // Verify the correct number of users is returned
-        assertEquals(2, allUsers.size());
-        
-        // Verify specific users are in the list
-        assertTrue(allUsers.stream().anyMatch(user -> user.getId() == 1L));
-        assertTrue(allUsers.stream().anyMatch(user -> user.getId() == 2L));
+        System.out.println("findAllUsers实际: " + allUsers);
+        assertEquals(2, allUsers.size(), "findAllUsers应返回2个用户");
+        assertTrue(allUsers.stream().anyMatch(user -> user.getId() == 1L), "应包含id=1L");
+        assertTrue(allUsers.stream().anyMatch(user -> user.getId() == 2L), "应包含id=2L");
+        System.out.println("[通过] findAllUsers内容正确");
     }
     
     @Test
     void testUserController() {
-        // Test getting an existing user's name
+        System.out.println("[ManualMock] 测试userController.getUserName(1L)");
         String userName = userController.getUserName(1L);
-        assertEquals("John Doe", userName);
-        
-        // Test getting a non-existent user's name
+        System.out.println("实际: " + userName);
+        assertEquals("John Doe", userName, "getUserName(1L)应为John Doe");
+        System.out.println("[通过] getUserName(1L)返回John Doe");
+        System.out.println("[ManualMock] 测试userController.getUserName(999L)");
         String unknownUserName = userController.getUserName(999L);
-        assertEquals("Unknown User", unknownUserName);
-        
-        // Test creating a new user
+        System.out.println("实际: " + unknownUserName);
+        assertEquals("Unknown User", unknownUserName, "getUserName(999L)应为Unknown User");
+        System.out.println("[通过] getUserName(999L)返回Unknown User");
+        System.out.println("[ManualMock] 测试userController.createUser");
         boolean createResult = userController.createUser(3L, "Bob Johnson", "bob@example.com");
-        assertTrue(createResult);
-        
-        // Verify the user was saved
+        System.out.println("createUser实际: " + createResult);
+        assertTrue(createResult, "createUser应返回true");
         User expectedUser = new User(3L, "Bob Johnson", "bob@example.com");
-        assertTrue(mockService.verifySavedUser(expectedUser));
-        
-        // Test updating a user
+        assertTrue(mockService.verifySavedUser(expectedUser), "verifySavedUser应为true");
+        System.out.println("[通过] createUser和verifySavedUser");
+        System.out.println("[ManualMock] 测试userController.updateUser");
         boolean updateResult = userController.updateUser(1L, "John Updated", "john.updated@example.com");
-        assertTrue(updateResult);
-        
-        // Verify the user was updated
+        System.out.println("updateUser实际: " + updateResult);
+        assertTrue(updateResult, "updateUser应返回true");
         Optional<User> updatedUser = mockService.findById(1L);
-        assertTrue(updatedUser.isPresent());
-        assertEquals("John Updated", updatedUser.get().getName());
-        assertEquals("john.updated@example.com", updatedUser.get().getEmail());
+        System.out.println("findById(1L) after update实际: " + updatedUser);
+        assertTrue(updatedUser.isPresent(), "update后findById(1L)应有值");
+        assertEquals("John Updated", updatedUser.get().getName(), "update后name应为John Updated");
+        assertEquals("john.updated@example.com", updatedUser.get().getEmail(), "update后email应为john.updated@example.com");
+        System.out.println("[通过] updateUser和findById(1L)内容正确");
     }
 } 

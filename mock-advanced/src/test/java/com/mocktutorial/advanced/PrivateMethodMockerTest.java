@@ -16,6 +16,7 @@ class PrivateMethodMockerTest {
     
     @BeforeEach
     void setUp() {
+        System.out.println("[PrivateMock] 初始化User对象");
         user = new User(1L, "John Doe", "john@example.com");
     }
     
@@ -26,65 +27,51 @@ class PrivateMethodMockerTest {
     
     @Test
     void testInvokePrivateMethod() throws Exception {
-        // Directly invoke the private calculateScore method
+        System.out.println("[PrivateMock] 直接反射调用private calculateScore");
         int score = PrivateMethodMocker.invokePrivateMethod(user, "calculateScore", new Class<?>[0]);
-        
-        // The calculateScore method returns id * 10 + name.length()
-        // For id=1 and name="John Doe", the result should be 1*10 + 8 = 18
-        assertEquals(18, score, "Private calculateScore method should return id*10 + name.length()");
+        System.out.println("实际: " + score);
+        assertEquals(18, score, "calculateScore应返回18");
+        System.out.println("[通过] 反射调用private方法正确");
     }
     
     @Test
     void testMockPrivateMethod() throws Throwable {
-        // Configure the private calculateScore method to return a fixed value
+        System.out.println("[PrivateMock] 配置calculateScore返回100");
         PrivateMethodMocker.when(user, "calculateScore", 100);
-        
-        // Call getScore() which internally calls the private calculateScore method
-        int score = user.getScore();
-        
-        // Since the private method is not actually mocked in this example,
-        // the score will not reflect our mock configuration.
-        // In the real implementation, the bytecode would be modified so that
-        // getScore() would return 100 rather than calling calculateScore()
-        
-        // For now, we'll just demonstrate that the mocking is set up correctly
+        System.out.println("[PrivateMock] handler调用calculateScore，预期返回100");
         Object mockConfig = PrivateMethodMocker.handlePrivateMethodCall(user, "calculateScore", new Object[0]);
-        assertEquals(100, mockConfig);
+        System.out.println("实际: " + mockConfig);
+        assertEquals(100, mockConfig, "mock handler应返回100");
+        System.out.println("[通过] private方法mock配置生效");
     }
     
     @Test
     void testMockPrivateMethodWithException() {
-        // Configure the private calculateScore method to throw an exception
+        System.out.println("[PrivateMock] 配置calculateScore抛出异常");
         RuntimeException expectedException = new RuntimeException("Test exception");
         PrivateMethodMocker.whenThrow(user, "calculateScore", expectedException);
-        
-        // Verify the exception has been correctly configured
-        // In a real implementation with bytecode manipulation, calling getScore() would throw the exception
-        // Here we'll just verify the configuration is correct by checking internal state
-        
-        // We can check if the mock is registered properly by examining if our target method/instance
-        // has a configuration in the PrivateMethodMocker
-        
+        System.out.println("[PrivateMock] handler调用calculateScore，预期抛出异常");
         try {
-            // This would throw the expected exception in an actual implementation
-            // Here, we're manually retrieving the mock behavior and verifying it's correct
             Object configuredBehavior = PrivateMethodMocker.getConfiguredBehavior(user, "calculateScore");
-            assertNotNull(configuredBehavior, "The mock behavior should be configured");
-            assertTrue(configuredBehavior instanceof RuntimeException, "The configured behavior should be an exception");
-            assertSame(expectedException, configuredBehavior, "The configured exception should be the one we provided");
+            System.out.println("实际: " + configuredBehavior);
+            assertNotNull(configuredBehavior, "应有mock配置");
+            assertTrue(configuredBehavior instanceof RuntimeException, "配置应为异常");
+            assertSame(expectedException, configuredBehavior, "应为配置的异常");
+            System.out.println("[通过] private方法异常mock配置生效");
         } catch (Exception e) {
-            fail("Failed to verify mock configuration: " + e.getMessage());
+            System.out.println("[失败] private方法异常mock配置未生效: " + e.getMessage());
+            throw e;
         }
     }
     
     @Test
     void testMockPrivateMethodWithCustomImplementation() throws Throwable {
-        // Configure the private calculateScore method with a custom implementation
+        System.out.println("[PrivateMock] 配置calculateScore自定义实现");
         PrivateMethodMocker.whenImplement(user, "calculateScore", args -> 200);
-        
-        // In a real implementation, calling getScore() would use our custom implementation
-        // For now, we'll just demonstrate that the implementation is configured correctly
+        System.out.println("[PrivateMock] handler调用calculateScore，预期返回200");
         Object result = PrivateMethodMocker.handlePrivateMethodCall(user, "calculateScore", new Object[0]);
-        assertEquals(200, result);
+        System.out.println("实际: " + result);
+        assertEquals(200, result, "自定义实现应返回200");
+        System.out.println("[通过] private方法自定义实现mock配置生效");
     }
 } 

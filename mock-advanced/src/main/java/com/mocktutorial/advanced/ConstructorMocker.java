@@ -188,22 +188,15 @@ public class ConstructorMocker {
      */
     @SuppressWarnings("unchecked")
     public static <T> T createInstanceWithoutConstructor(Class<T> clazz) throws Exception {
+        // 使用Unsafe.allocateInstance确保不调用构造函数
         try {
-            // Try to use JDK21 optimized path if available
-            if (Jdk21Optimizer.isJdk21OrHigher()) {
-                // Will implement proper JDK21 way in the future
-                logger.debug("Using JDK21 optimized instance creation for class {}", clazz.getName());
-            }
-            
-            // Fall back to unsafe allocation
-            // This implementation will vary based on the version of Java being used
-            // For demonstration, we'll use a simplified approach that might not work in all cases
-            Constructor<T> constructor = clazz.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            return constructor.newInstance();
+            java.lang.reflect.Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            sun.misc.Unsafe unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+            return (T) unsafe.allocateInstance(clazz);
         } catch (Exception e) {
             logger.error("Failed to create instance without constructor for class " + clazz.getName(), e);
-            throw e;
+            throw new RuntimeException("Failed to create instance without constructor for class " + clazz.getName(), e);
         }
     }
     

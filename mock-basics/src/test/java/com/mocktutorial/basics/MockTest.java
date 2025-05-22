@@ -16,53 +16,68 @@ public class MockTest {
 
     @Test
     public void testMockInterface() {
-        // 测试创建接口的mock
+        System.out.println("[接口Mock] 创建UserService mock对象");
         UserService userService = Mock.mock(UserService.class);
-        
-        // 默认情况下，接口方法应该返回null或基本类型的默认值
-        assertNull(userService.findById(1L).orElse(null));
-        assertFalse(userService.saveUser(new User(1L, "Test")));
-        assertFalse(userService.deleteUser(1L));
-        assertNotNull(userService.findAllUsers());
-        assertTrue(userService.findAllUsers().isEmpty());
+        System.out.println("[接口Mock] 预期findById返回Optional.empty");
+        Optional<User> result = userService.findById(1L);
+        System.out.println("实际: " + result);
+        assertNull(result.orElse(null), "findById应返回Optional.empty");
+        System.out.println("[通过] findById返回Optional.empty");
+        System.out.println("[接口Mock] 预期saveUser返回false");
+        boolean saveResult = userService.saveUser(new User(1L, "Test"));
+        System.out.println("实际: " + saveResult);
+        assertFalse(saveResult, "saveUser应返回false");
+        System.out.println("[通过] saveUser返回false");
+        System.out.println("[接口Mock] 预期deleteUser返回false");
+        boolean delResult = userService.deleteUser(1L);
+        System.out.println("实际: " + delResult);
+        assertFalse(delResult, "deleteUser应返回false");
+        System.out.println("[通过] deleteUser返回false");
+        System.out.println("[接口Mock] 预期findAllUsers返回空集合");
+        assertNotNull(userService.findAllUsers(), "findAllUsers不应为null");
+        assertTrue(userService.findAllUsers().isEmpty(), "findAllUsers应返回空集合");
+        System.out.println("[通过] findAllUsers返回空集合");
     }
     
     @Test
     public void testMockClass() {
-        // 测试创建具体类的mock
+        System.out.println("[类Mock] 创建User mock对象");
         User mockUser = Mock.mock(User.class);
-        
-        // 默认情况下，方法应该返回基本类型的默认值或null
-        assertEquals(0L, mockUser.getId());
-        assertNull(mockUser.getName());
-        assertNull(mockUser.getEmail());
-        assertEquals(0, mockUser.getScore());
+        System.out.println("[类Mock] 预期getId返回0");
+        assertEquals(0L, mockUser.getId(), "getId应返回0");
+        System.out.println("[通过] getId返回0");
+        System.out.println("[类Mock] 预期getName返回null");
+        assertNull(mockUser.getName(), "getName应返回null");
+        System.out.println("[通过] getName返回null");
+        System.out.println("[类Mock] 预期getEmail返回null");
+        assertNull(mockUser.getEmail(), "getEmail应返回null");
+        System.out.println("[通过] getEmail返回null");
+        System.out.println("[类Mock] 预期getScore返回0");
+        assertEquals(0, mockUser.getScore(), "getScore应返回0");
+        System.out.println("[通过] getScore返回0");
     }
     
     @Test
     public void testToString() {
-        // 测试mock对象的toString方法
+        System.out.println("[toString] 测试mock对象toString");
         UserService userService = Mock.mock(UserService.class);
-        
-        // toString应该包含类名和某种标识
         String str = userService.toString();
-        assertTrue(str.contains("UserService"));
-        assertTrue(str.contains("Mock"));
+        System.out.println("实际: " + str);
+        assertTrue(str.contains("UserService"), "toString应包含类名");
+        assertTrue(str.contains("Mock"), "toString应包含Mock标识");
+        System.out.println("[通过] toString包含类名和Mock标识");
     }
     
     @Test
     public void testEquals() {
-        // 测试mock对象的equals方法
+        System.out.println("[equals] 测试mock对象equals");
         UserService userService1 = Mock.mock(UserService.class);
         UserService userService2 = Mock.mock(UserService.class);
-        
-        // 相同的mock对象应该相等于自身
-        assertEquals(userService1, userService1);
-        assertEquals(userService2, userService2);
-        
-        // 不同的mock对象应该不相等
-        assertNotEquals(userService1, userService2);
-        assertNotEquals(userService1, null);
-        assertNotEquals(userService1, "string");
+        assertEquals(userService1, userService1, "同一mock对象应相等");
+        assertEquals(userService2, userService2, "同一mock对象应相等");
+        assertNotEquals(userService1, userService2, "不同mock对象不应相等");
+        assertNotEquals(userService1, null, "与null不应相等");
+        assertNotEquals(userService1, "string", "与其他类型不应相等");
+        System.out.println("[通过] equals行为符合预期");
     }
 } 

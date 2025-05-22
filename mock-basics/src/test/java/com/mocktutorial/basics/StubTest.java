@@ -18,50 +18,55 @@ public class StubTest {
 
     @Test
     public void testMethodStubbing() {
-        // 创建一个UserService的mock
+        System.out.println("[Stub] 创建UserService mock对象");
         UserService userService = Mock.mock(UserService.class);
         User testUser = new User(1L, "Test User", "test@example.com");
-        
-        // 先调用方法以便记录调用
+        System.out.println("[Stub] 配置findById(1L)返回testUser");
         Mock.when(userService, "findById", 1L).thenReturn(Optional.of(testUser));
-        
+        System.out.println("[Stub] 调用findById(1L)，预期返回testUser");
         Optional<User> returnedUser = userService.findById(1L);
-        assertTrue(returnedUser.isPresent());
-        assertEquals(testUser, returnedUser.get());
+        System.out.println("实际: " + returnedUser);
+        assertTrue(returnedUser.isPresent(), "findById应返回有值");
+        assertEquals(testUser, returnedUser.get(), "findById返回的User应为testUser");
+        System.out.println("[通过] findById存根生效");
     }
     
     @Test
     public void testExceptionStubbing() {
-        // 创建一个UserService的mock
+        System.out.println("[Stub] 创建UserService mock对象");
         UserService userService = Mock.mock(UserService.class);
         RuntimeException testException = new RuntimeException("测试异常");
-        
-        // 先调用方法以便记录调用
+        System.out.println("[Stub] 配置findById(999L)抛出异常");
         Mock.when(userService, "findById", 999L).thenThrow(testException);
-        
+        System.out.println("[Stub] 调用findById(999L)，预期抛出异常");
         RuntimeException thrown = assertThrows(RuntimeException.class, () -> userService.findById(999L));
-        assertEquals("测试异常", thrown.getMessage());
+        System.out.println("实际异常信息: " + thrown.getMessage());
+        assertEquals("测试异常", thrown.getMessage(), "异常信息应为'测试异常'");
+        System.out.println("[通过] findById异常存根生效");
     }
     
     @Test
     public void testVerification() {
-        // 创建一个UserService的mock
+        System.out.println("[Verify] 创建UserService mock对象");
         UserService userService = Mock.mock(UserService.class);
         User testUser = new User(1L, "Test User", "test@example.com");
-        
-        // 执行一些操作
+        System.out.println("[Verify] 执行findById和saveUser操作");
         userService.findById(1L);
         userService.saveUser(testUser);
         userService.saveUser(testUser); // 调用两次
-        
         try {
-            // 验证方法调用 - 这部分实际上在当前阶段不会生效，因为我们尚未完全实现字节码操作
+            System.out.println("[Verify] 验证findById(1L)被调用1次");
             Mock.verify(userService).once().findById(1L);
+            System.out.println("[通过] findById(1L)调用验证通过");
+            System.out.println("[Verify] 验证saveUser(testUser)被调用2次");
             Mock.verify(userService).times(2).saveUser(testUser);
+            System.out.println("[通过] saveUser(testUser)调用验证通过");
+            System.out.println("[Verify] 验证deleteUser(1L)未被调用");
             Mock.verify(userService).never().deleteUser(1L);
+            System.out.println("[通过] deleteUser(1L)未被调用验证通过");
         } catch (AssertionError e) {
-            // 对于目前阶段，我们预期这些断言可能会失败，所以捕获并记录断言错误
-            System.out.println("注意：方法验证尚未实现。错误信息: " + e.getMessage());
+            System.out.println("[警告] 方法验证未通过: " + e.getMessage());
+            throw e;
         }
     }
 } 

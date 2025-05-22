@@ -111,10 +111,17 @@ public class ConstructorAgent {
         
         // Check if the handler processed the call
         body.append("        if (mockResult != com.mocktutorial.advanced.ConstructorMocker.PROCEED) {\n");
-        body.append("            // If a mock result was provided, we need to copy its state to this instance\n");
-        body.append("            // In a full implementation, we would use reflection to copy all fields\n");
-        body.append("            // For now, this is a placeholder for the actual implementation\n");
-        body.append("            System.out.println(\"Constructor mocking not fully implemented yet\");\n");
+        body.append("            // 将mockResult的所有字段赋值到this\n");
+        body.append("            java.lang.Class<?> clazz = mockResult.getClass();\n");
+        body.append("            while (clazz != null && clazz != Object.class) {\n");
+        body.append("                java.lang.reflect.Field[] fields = clazz.getDeclaredFields();\n");
+        body.append("                for (java.lang.reflect.Field f : fields) {\n");
+        body.append("                    if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;\n");
+        body.append("                    f.setAccessible(true);\n");
+        body.append("                    try { f.set(this, f.get(mockResult)); } catch (Throwable ignore) {}\n");
+        body.append("                }\n");
+        body.append("                clazz = clazz.getSuperclass();\n");
+        body.append("            }\n");
         body.append("            return;\n");
         body.append("        }\n");
         

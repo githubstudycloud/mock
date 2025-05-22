@@ -27,140 +27,120 @@ public class ComprehensiveTest {
     
     @Test
     public void testBasicMocking() {
-        // 1. 基本接口模拟
+        System.out.println("[Integration] 创建List mock对象");
         List<String> mockList = Mock.mock(List.class);
-        assertNotNull(mockList);
-        assertTrue(mockList.isEmpty());  // 默认返回原始类型的默认值或空集合
-        
-        // 2. 方法存根（注意：这部分实际功能尚未完全实现）
+        System.out.println("[Integration] 预期mockList不为null且isEmpty为true");
+        System.out.println("实际: mockList=" + mockList + ", isEmpty=" + mockList.isEmpty());
+        assertNotNull(mockList, "mockList应不为null");
+        assertTrue(mockList.isEmpty(), "mockList.isEmpty应为true");
+        System.out.println("[通过] mockList基础行为正确");
         try {
+            System.out.println("[Integration] 配置mockList.size()返回10");
             Mock.when(mockList, "size").thenReturn(10);
-            assertEquals(10, mockList.size());
+            int size = mockList.size();
+            System.out.println("实际: size=" + size);
+            assertEquals(10, size, "mockList.size应为10");
+            System.out.println("[通过] mockList.size存根生效");
         } catch (Exception e) {
-            System.out.println("方法存根尚未完全实现: " + e.getMessage());
+            System.out.println("[警告] 方法存根未完全实现: " + e.getMessage());
         }
     }
     
     @Test
     public void testStaticMocking() throws Throwable {
-        // 3. 静态方法模拟
+        System.out.println("[Integration] 静态方法mock准备");
         StaticMocker.prepareForStaticMocking(StaticHelper.class);
-        
-        // 默认行为
-        assertEquals("原始静态方法", StaticHelper.getStaticValue());
-        
-        // 配置返回值
+        System.out.println("[Integration] 预期getStaticValue返回原始值");
+        String origin = StaticHelper.getStaticValue();
+        System.out.println("实际: " + origin);
+        assertEquals("原始静态方法", origin, "getStaticValue应返回原始值");
+        System.out.println("[Integration] 配置getStaticValue返回'模拟的静态值'");
         StaticMocker.when(StaticHelper.class, "getStaticValue", "模拟的静态值");
-        
-        // 对于完整实现，这将直接返回模拟的值
-        // 但由于当前实现可能不完整，我们直接测试处理方法
-        Object result = StaticMocker.handleStaticMethodCall(
-                StaticHelper.class, "getStaticValue", new Object[0]);
-        assertEquals("模拟的静态值", result);
-        
-        // 配置抛出异常
+        Object result = StaticMocker.handleStaticMethodCall(StaticHelper.class, "getStaticValue", new Object[0]);
+        System.out.println("handleStaticMethodCall实际: " + result);
+        assertEquals("模拟的静态值", result, "handleStaticMethodCall应返回模拟值");
+        System.out.println("[通过] 静态方法mock配置生效");
+        System.out.println("[Integration] 配置getStaticValue抛出异常");
         RuntimeException testException = new RuntimeException("测试异常");
         StaticMocker.whenThrow(StaticHelper.class, "getStaticValue", testException);
-        
         try {
             StaticMocker.handleStaticMethodCall(StaticHelper.class, "getStaticValue", new Object[0]);
             fail("应该抛出异常");
         } catch (Exception e) {
-            assertSame(testException, e);
+            System.out.println("实际异常: " + e);
+            assertSame(testException, e, "抛出的异常应为配置的异常");
+            System.out.println("[通过] 静态方法异常mock配置生效");
         }
-        
-        // 配置自定义实现
-        StaticMocker.whenImplement(StaticHelper.class, "processValue", 
-                args -> "处理结果: " + args[0]);
-        
-        result = StaticMocker.handleStaticMethodCall(
-                StaticHelper.class, "processValue", new Object[]{"测试输入"});
-        assertEquals("处理结果: 测试输入", result);
+        System.out.println("[Integration] 配置processValue自定义实现");
+        StaticMocker.whenImplement(StaticHelper.class, "processValue", args -> "处理结果: " + args[0]);
+        Object customResult = StaticMocker.handleStaticMethodCall(StaticHelper.class, "processValue", new Object[]{"测试输入"});
+        System.out.println("handleStaticMethodCall实际: " + customResult);
+        assertEquals("处理结果: 测试输入", customResult, "自定义实现应生效");
+        System.out.println("[通过] 静态方法自定义实现mock配置生效");
     }
     
-        @Test    public void testPrivateMethodMocking() throws Throwable {
-        // 4. 私有方法模拟和调用
+    @Test
+    public void testPrivateMethodMocking() throws Throwable {
+        System.out.println("[Integration] 私有方法mock准备");
         TestClass testObj = new TestClass();
-        
-        // 使用反射调用私有方法
-        String privateResult = PrivateMethodMocker.invokePrivateMethod(
-                testObj, "getPrivateValue", new Class[0]);
-        assertEquals("私有方法值", privateResult);
-        
-        // 配置私有方法返回值
+        System.out.println("[Integration] 反射调用getPrivateValue，预期返回'私有方法值'");
+        String privateResult = PrivateMethodMocker.invokePrivateMethod(testObj, "getPrivateValue", new Class[0]);
+        System.out.println("实际: " + privateResult);
+        assertEquals("私有方法值", privateResult, "getPrivateValue应返回原始值");
+        System.out.println("[Integration] 配置getPrivateValue返回'模拟的私有值'");
         PrivateMethodMocker.when(testObj, "getPrivateValue", "模拟的私有值");
-        
-        // 对于完整实现，这将在调用实际方法时生效
-        // 但由于当前实现可能不完整，我们直接测试处理方法
-        Object result = PrivateMethodMocker.handlePrivateMethodCall(
-                testObj, "getPrivateValue", new Object[0]);
-        assertEquals("模拟的私有值", result);
-        
-        // 配置私有方法抛出异常
+        Object result = PrivateMethodMocker.handlePrivateMethodCall(testObj, "getPrivateValue", new Object[0]);
+        System.out.println("handlePrivateMethodCall实际: " + result);
+        assertEquals("模拟的私有值", result, "handlePrivateMethodCall应返回模拟值");
+        System.out.println("[通过] 私有方法mock配置生效");
+        System.out.println("[Integration] 配置getPrivateValue抛出异常");
         RuntimeException testException = new RuntimeException("私有方法异常");
         PrivateMethodMocker.whenThrow(testObj, "getPrivateValue", testException);
-        
         try {
             PrivateMethodMocker.handlePrivateMethodCall(testObj, "getPrivateValue", new Object[0]);
             fail("应该抛出异常");
         } catch (Exception e) {
-            assertSame(testException, e);
+            System.out.println("实际异常: " + e);
+            assertSame(testException, e, "抛出的异常应为配置的异常");
+            System.out.println("[通过] 私有方法异常mock配置生效");
         }
-        
-        // 配置私有方法自定义实现
-        PrivateMethodMocker.whenImplement(testObj, "processPrivate", 
-                args -> "私有处理: " + args[0]);
-        
-        result = PrivateMethodMocker.handlePrivateMethodCall(
-                testObj, "processPrivate", new Object[]{"私有输入"});
-        assertEquals("私有处理: 私有输入", result);
+        System.out.println("[Integration] 配置processPrivate自定义实现");
+        PrivateMethodMocker.whenImplement(testObj, "processPrivate", args -> "私有处理: " + args[0]);
+        Object customResult = PrivateMethodMocker.handlePrivateMethodCall(testObj, "processPrivate", new Object[]{"私有输入"});
+        System.out.println("handlePrivateMethodCall实际: " + customResult);
+        assertEquals("私有处理: 私有输入", customResult, "自定义实现应生效");
+        System.out.println("[通过] 私有方法自定义实现mock配置生效");
     }
     
     @Test
     public void testConstructorMocking() throws Throwable {
-        // 5. 构造函数模拟
+        System.out.println("[Integration] 构造器mock准备");
         ConstructorMocker.prepareForConstructorMocking(TestClass.class);
-        
-        // 创建一个预配置的实例
+        System.out.println("[Integration] 配置无参构造返回mockInstance");
         TestClass mockInstance = new TestClass();
         mockInstance.setValue("模拟构造值");
-        
-        // 配置无参构造函数返回预配置的实例
         ConstructorMocker.whenConstructor(TestClass.class, mockInstance);
-        
-        // 对于完整实现，这将在创建对象时生效
-        // 但由于当前实现可能不完整，我们直接测试处理方法
-        Object result = ConstructorMocker.handleConstructorCall(
-                TestClass.class, new Object[0], new Class[0]);
-        
-        assertSame(mockInstance, result);
-        assertEquals("模拟构造值", ((TestClass)result).getValue());
-        
-        // 配置带参数构造函数的自定义实现
-        ConstructorMocker.whenConstructorImplement(
-            TestClass.class, 
-            args -> {
-                TestClass instance = new TestClass();
-                instance.setValue("自定义构造: " + args[0]);
-                return instance;
-            },
-            String.class
-        );
-        
-        result = ConstructorMocker.handleConstructorCall(
-                TestClass.class, new Object[]{"参数值"}, new Class[]{String.class});
-        assertEquals("自定义构造: 参数值", ((TestClass)result).getValue());
-        
-        // 测试创建实例但不调用构造函数
-        try {
-            TestClass noConstructorInstance = 
-                ConstructorMocker.createInstanceWithoutConstructor(TestClass.class);
-            
-            // 注意：当前实现可能会调用构造函数
-            System.out.println("无构造函数创建结果: " + noConstructorInstance.getValue());
-        } catch (Exception e) {
-            System.out.println("创建无构造函数实例失败: " + e.getMessage());
-        }
+        System.out.println("[Integration] 创建TestClass实例，预期返回mockInstance");
+        Object result = ConstructorMocker.handleConstructorCall(TestClass.class, new Object[0], new Class[0]);
+        System.out.println("handleConstructorCall实际: " + result);
+        assertSame(mockInstance, result, "handleConstructorCall应返回mockInstance");
+        assertEquals("模拟构造值", ((TestClass)result).getValue(), "mockInstance的值应为'模拟构造值'");
+        System.out.println("[通过] 构造器mock配置生效");
+        System.out.println("[Integration] 配置有参构造自定义实现");
+        ConstructorMocker.whenConstructorImplement(TestClass.class, args -> {
+            TestClass instance = new TestClass();
+            instance.setValue("自定义构造: " + args[0]);
+            return instance;
+        }, String.class);
+        Object customResult = ConstructorMocker.handleConstructorCall(TestClass.class, new Object[]{"参数值"}, new Class[]{String.class});
+        System.out.println("handleConstructorCall实际: " + customResult);
+        assertEquals("自定义构造: 参数值", ((TestClass)customResult).getValue(), "自定义实现应生效");
+        System.out.println("[通过] 构造器自定义实现mock配置生效");
+        System.out.println("[Integration] 测试createInstanceWithoutConstructor严格不调用构造函数");
+        TestClass noConstructorInstance = ConstructorMocker.createInstanceWithoutConstructor(TestClass.class);
+        System.out.println("createInstanceWithoutConstructor实际: " + noConstructorInstance.getValue());
+        assertNull(noConstructorInstance.getValue(), "createInstanceWithoutConstructor应不调用构造函数，值应为null");
+        System.out.println("[通过] createInstanceWithoutConstructor未调用构造函数，值为null");
     }
     
     // 用于测试的辅助类

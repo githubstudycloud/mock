@@ -767,4 +767,96 @@ class UserServiceExample {
 4. **完善测试**：编写全面的单元测试和集成测试
 5. **改进文档**：为不同级别的用户提供详细文档
 
-通过本指南，您已经掌握了实现Mock框架的基本知识和技术。继续探索和改进这个框架，您将能够创建一个功能强大的测试工具！ 
+通过本指南，您已经掌握了实现Mock框架的基本知识和技术。继续探索和改进这个框架，您将能够创建一个功能强大的测试工具！
+
+---
+
+# V3高级Mock架构与实现路线（草案）
+
+## 1. 现有方案的局限
+
+- Javassist只能在构造函数体内插入代码，无法阻止构造函数本身的字段赋值（如`this.value = ...`），只能在构造体前/后做拦截和字段拷贝。
+- 你只能"伪造"对象状态，不能让`new`出来的对象就是mockInstance本身。
+- 这种方式对final字段、不可变对象、父类构造器等场景支持有限。
+- 这种方式对依赖注入、Spring等框架的兼容性有限。
+
+## 2. 高级Mock构造器方案
+
+### 方案A：Instrumentation redefine + 构造器劫持（推荐，Mockito/PowerMock同类原理）
+- 使用`java.lang.instrument.Instrumentation`在类加载后**重新定义类的字节码**，将构造器替换为mock逻辑。
+- 可以做到：new出来的对象就是你想要的mock对象，甚至可以直接返回你自定义的实例。
+- 支持final类、final字段、父类构造器等复杂场景。
+- 步骤：
+  1. Java Agent注入Instrumentation
+  2. 拦截类加载/重定义，替换目标类的构造器字节码
+  3. 构造器mock逻辑：mock命中时直接return mockInstance（可用ThreadLocal传递），否则走原始逻辑
+  4. 对于不能直接redefine的类（如JDK核心类），可用工厂方法或动态代理
+- 优点：兼容性强，支持绝大多数场景，可与Spring、Guice等依赖注入框架无缝集成
+- 缺点：需要Java Agent，用户需配置JVM参数，Instrumentation API有一定门槛
+
+### 方案B：字节码生成+工厂替代new（如Objenesis/Mockito）
+- 用Objenesis等库直接分配对象内存，不调用构造函数。
+- 提供统一的Mock工厂方法，所有mock对象都通过工厂创建，而不是直接new。
+- 结合动态代理/字节码增强，实现方法拦截和mock。
+- 优点：不需要Java Agent，易于集成，兼容JDK8-21，适合大多数业务mock场景。
+- 缺点：不能mock直接new出来的对象（只能通过工厂），对final类/字段支持有限（需结合Instrumentation）。
+
+### 方案C：JDK21新特性适配
+- 结合JDK21的`MethodHandles.Lookup`、`defineHiddenClass`等API，动态生成mock类。
+- 支持record、sealed class等新语法。
+- 结合虚拟线程做高并发mock测试。
+
+## 3. 推荐架构设计
+
+- 核心mock引擎：支持Instrumentation redefine和Objenesis两种模式，自动检测环境选择最佳方案。
+- API层：统一用`Mock.mock(Class<T>)`、`Mock.when(...)`等API，屏蔽底层实现细节。
+- Spring/DI集成：提供starter和BeanPostProcessor，自动mock依赖。
+- JDK兼容性：自动适配JDK8-21，未来可扩展JDK22+新特性。
+- 可插拔拦截器：支持自定义mock行为、验证、事件监听等。
+
+## 4. 参考实现/开源库
+
+- [Mockito](https://github.com/mockito/mockito)（Instrumentation+Objenesis）
+- [PowerMock](https://github.com/powermock/powermock)（Agent+ASM）
+- [Byte Buddy](https://bytebuddy.net/#/)
+
+## 5. 结论与建议
+
+- 短期：继续用当前Javassist+字段拷贝方案，测试用例只断言handleConstructorCall返回的对象。
+- 中长期：实现Instrumentation redefine，支持真正的构造器mock，兼容所有场景。
+- API层保持不变，底层实现可切换，方便后续升级和对外提供依赖。
+
+---
+
+# V3版本实现计划（Recommended Architecture Implementation Plan）
+
+## 1. 目标
+- 支持真正的构造器mock，new出来的对象就是mockInstance或自定义实现。
+- 兼容JDK8-21及未来版本，支持final类、final字段、record、sealed class等。
+- 提供无侵入API，适配主流依赖注入框架。
+
+## 2. 技术路线
+- Instrumentation redefine为主，Objenesis/Unsafe为辅，自动检测环境。
+- 提供MockAgent，支持-premain和agentmain两种模式。
+- 构造器mock采用ThreadLocal传递mockInstance，构造器体内抛出特殊异常，外部捕获后返回mockInstance。
+- 提供MockFactory工厂API，所有mock对象可通过工厂创建。
+- 支持Spring、Guice等依赖注入自动mock。
+
+## 3. API设计
+- `Mock.mock(Class<T>)`：自动选择最佳mock方式。
+- `Mock.when(...)`、`Mock.verify(...)`：行为定义与验证。
+- `MockFactory.create(Class<T>)`：工厂创建mock对象。
+- `MockAgent`：Java Agent入口，支持动态attach。
+
+## 4. 关键实现点
+- Instrumentation redefine构造器：字节码插桩，mock命中时直接抛出MockReturnException，外部捕获后返回mockInstance。
+- Objenesis/Unsafe分配对象：兼容无构造函数场景。
+- 兼容final类/字段、record、sealed class。
+- Spring集成：BeanPostProcessor自动mock依赖。
+
+## 5. 未来展望
+- 适配JDK22+新特性，支持虚拟线程、record pattern matching等。
+- 提供可插拔mock行为、事件监听、mock链路追踪等高级特性。
+- 完善文档与示例，推动社区生态。
+
+--- 
