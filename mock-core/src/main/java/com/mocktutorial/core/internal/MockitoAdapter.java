@@ -58,7 +58,7 @@ public class MockitoAdapter {
         private final Map<String, Object> methodReturns = new HashMap<>();
         public final Map<MethodCallKey, java.util.List<Object[]>> methodCalls = new HashMap<>();
         // 新增：记录每个方法调用的存根行为（用于存根）
-        final Map<MethodCallKey, StubBehavior> stubs = new HashMap<>();
+        public final Map<MethodCallKey, StubBehavior> stubs = new HashMap<>();
 
         // 方法调用唯一标识
         public static class MethodCallKey {
@@ -108,19 +108,33 @@ public class MockitoAdapter {
             MethodCallKey callKey = new MethodCallKey(method.getName(), args);
             methodCalls.computeIfAbsent(callKey, k -> new java.util.ArrayList<>()).add(args);
 
-            // 检查是否有为此方法+参数配置的存根行为
+            // 1. 优先查找 stub
             StubBehavior stub = stubs.get(callKey);
             if (stub != null) {
-                Mock.setLastCallContext(proxy, method.getName(), args, stub.returnValue);
                 if (stub.throwable != null) throw stub.throwable;
                 if (stub.implementation != null) return stub.implementation.apply(args);
                 return stub.returnValue;
             }
 
-            // 默认返回值
+            // 2. 处理 Collection 的常用方法
+            Class<?> declaringClass = method.getDeclaringClass();
+            String methodName = method.getName();
+            if (java.util.Collection.class.isAssignableFrom(mockedInterface) ||
+                java.util.List.class.isAssignableFrom(mockedInterface) ||
+                java.util.Set.class.isAssignableFrom(mockedInterface)) {
+                if ("isEmpty".equals(methodName)) {
+                    return true;
+                } else if ("size".equals(methodName)) {
+                    return 0;
+                } else if ("contains".equals(methodName)) {
+                    return false;
+                } else if ("iterator".equals(methodName)) {
+                    return java.util.Collections.emptyIterator();
+                }
+            }
+
+            // 3. 默认返回值
             Object result = getDefaultReturnValue(method.getReturnType());
-            Mock.recordMethodCall(result);
-            Mock.setLastCallContext(proxy, method.getName(), args, result);
             return result;
         }
         

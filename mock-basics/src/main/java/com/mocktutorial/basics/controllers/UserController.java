@@ -5,6 +5,7 @@ import com.mocktutorial.basics.services.UserService;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Controller for managing users
@@ -73,6 +74,6 @@ public class UserController {
     public List<String> getAllUserNames() {
         return userService.findAllUsers().stream()
                 .map(User::getName)
-                .toList();
+                .collect(Collectors.toList());
     }
 } 

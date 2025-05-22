@@ -22,8 +22,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
         <javassist.version>3.29.2-GA</javassist.version>
         <junit.version>5.10.1</junit.version>
         <mockito.version>5.7.0</mockito.version>
@@ -100,8 +98,7 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
+                        <release>8</release>
                         <compilerArgs>
                             <arg>-parameters</arg>
                         </compilerArgs>

@@ -34,7 +34,7 @@ public class ComprehensiveTest {
         
         // 2. 方法存根（注意：这部分实际功能尚未完全实现）
         try {
-            Mock.when(mockList.size()).thenReturn(10);
+            Mock.when(mockList, "size").thenReturn(10);
             assertEquals(10, mockList.size());
         } catch (Exception e) {
             System.out.println("方法存根尚未完全实现: " + e.getMessage());

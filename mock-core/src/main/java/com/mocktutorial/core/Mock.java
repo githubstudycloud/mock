@@ -102,9 +102,9 @@ public class Mock {
                 ((java.util.Map) stubsField.get(mock)).clear();
             } catch (Exception e) { /* ignore */ }
         }
-        // 清理全局 ThreadLocal 状态
-        lastCallContext.remove();
-        lastMethodCall.remove();
+        // 清理全局 ThreadLocal 状态 (已移除)
+        // lastCallContext.remove();
+        // lastMethodCall.remove();
     }
     
     /**
