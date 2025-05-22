@@ -83,7 +83,7 @@ public class MockitoAdapter {
             }
         }
         // 存根行为封装
-        private static class StubBehavior {
+        public static class StubBehavior {
             Object returnValue;
             Throwable throwable;
             java.util.function.Function<Object[], Object> implementation;
@@ -117,29 +117,10 @@ public class MockitoAdapter {
                 return stub.returnValue;
             }
 
-            // 首先尝试执行方法并记录调用
+            // 默认返回值
             Object result = getDefaultReturnValue(method.getReturnType());
-            // 记录方法调用，以便when()方法可以使用
             Mock.recordMethodCall(result);
-            // 新增：记录完整上下文
             Mock.setLastCallContext(proxy, method.getName(), args, result);
-
-            // 检查是否有为此方法配置的存根行为（全局，参数无关）
-            if (MethodInterceptor.hasReturnValue(result)) {
-                // 如果有，使用配置的存根行为
-                return MethodInterceptor.getReturnValue(result, args);
-            }
-
-            // 检查本地存根
-            String methodKey = method.getName();
-            if (methodReturns.containsKey(methodKey)) {
-                Object returnValue = methodReturns.get(methodKey);
-                if (returnValue instanceof Throwable) {
-                    throw (Throwable) returnValue;
-                }
-                return returnValue;
-            }
-
             return result;
         }
         

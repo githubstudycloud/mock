@@ -113,7 +113,10 @@ public class Mock {
     public static <T> MethodInterceptor<T> when(T methodCall) {
         @SuppressWarnings("unchecked")
         T savedMethodCall = (T) lastMethodCall.get();
-        MethodInterceptor<T> interceptor = new MethodInterceptor<>(null);
+        // 取出 mock 实例
+        LastCallContext ctx = getLastCallContext();
+        T mock = ctx != null && ctx.mock != null ? (T) ctx.mock : null;
+        MethodInterceptor<T> interceptor = new MethodInterceptor<>(mock);
         interceptor.recordMethodCall(savedMethodCall != null ? savedMethodCall : methodCall);
         return interceptor;
     }
@@ -159,7 +162,6 @@ public class Mock {
         // 清理全局 ThreadLocal 状态
         lastCallContext.remove();
         lastMethodCall.remove();
-        MethodInterceptor.clearAllStubs();
     }
     
     /**
