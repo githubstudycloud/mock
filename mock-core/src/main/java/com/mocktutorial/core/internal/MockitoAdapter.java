@@ -53,9 +53,41 @@ public class MockitoAdapter {
     /**
      * Simple invocation handler for the JDK proxy.
      */
-    private static class MockInvocationHandler implements InvocationHandler {
+    public static class MockInvocationHandler implements InvocationHandler {
         private final Class<?> mockedInterface;
         private final Map<String, Object> methodReturns = new HashMap<>();
+        public final Map<MethodCallKey, java.util.List<Object[]>> methodCalls = new HashMap<>();
+        // 新增：记录每个方法调用的存根行为（用于存根）
+        private final Map<MethodCallKey, StubBehavior> stubs = new HashMap<>();
+
+        // 方法调用唯一标识
+        public static class MethodCallKey {
+            private final String methodName;
+            private final Object[] args;
+            public MethodCallKey(String methodName, Object[] args) {
+                this.methodName = methodName;
+                this.args = args == null ? new Object[0] : args.clone();
+            }
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                MethodCallKey that = (MethodCallKey) o;
+                return methodName.equals(that.methodName) && java.util.Arrays.deepEquals(args, that.args);
+            }
+            @Override
+            public int hashCode() {
+                int result = methodName.hashCode();
+                result = 31 * result + java.util.Arrays.deepHashCode(args);
+                return result;
+            }
+        }
+        // 存根行为封装
+        private static class StubBehavior {
+            Object returnValue;
+            Throwable throwable;
+            java.util.function.Function<Object[], Object> implementation;
+        }
         
         MockInvocationHandler(Class<?> mockedInterface) {
             this.mockedInterface = mockedInterface;
@@ -71,19 +103,33 @@ public class MockitoAdapter {
             } else if (method.getName().equals("toString")) {
                 return "Mock of " + mockedInterface.getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
             }
-            
+
+            // 记录方法调用（用于验证）
+            MethodCallKey callKey = new MethodCallKey(method.getName(), args);
+            methodCalls.computeIfAbsent(callKey, k -> new java.util.ArrayList<>()).add(args);
+
+            // 检查是否有为此方法+参数配置的存根行为
+            StubBehavior stub = stubs.get(callKey);
+            if (stub != null) {
+                Mock.setLastCallContext(proxy, method.getName(), args, stub.returnValue);
+                if (stub.throwable != null) throw stub.throwable;
+                if (stub.implementation != null) return stub.implementation.apply(args);
+                return stub.returnValue;
+            }
+
             // 首先尝试执行方法并记录调用
             Object result = getDefaultReturnValue(method.getReturnType());
-            
             // 记录方法调用，以便when()方法可以使用
             Mock.recordMethodCall(result);
-            
-            // 检查是否有为此方法配置的存根行为
+            // 新增：记录完整上下文
+            Mock.setLastCallContext(proxy, method.getName(), args, result);
+
+            // 检查是否有为此方法配置的存根行为（全局，参数无关）
             if (MethodInterceptor.hasReturnValue(result)) {
                 // 如果有，使用配置的存根行为
                 return MethodInterceptor.getReturnValue(result, args);
             }
-            
+
             // 检查本地存根
             String methodKey = method.getName();
             if (methodReturns.containsKey(methodKey)) {
@@ -93,7 +139,7 @@ public class MockitoAdapter {
                 }
                 return returnValue;
             }
-            
+
             return result;
         }
         
@@ -103,7 +149,7 @@ public class MockitoAdapter {
          * @param returnType 返回类型
          * @return 默认值
          */
-        private Object getDefaultReturnValue(Class<?> returnType) {
+        public Object getDefaultReturnValue(Class<?> returnType) {
             if (returnType.equals(void.class)) {
                 return null;
             } else if (returnType.equals(boolean.class) || returnType.equals(Boolean.class)) {
@@ -124,9 +170,61 @@ public class MockitoAdapter {
                 } else if (returnType.equals(double.class) || returnType.equals(Double.class)) {
                     return 0.0d;
                 }
+            } else if (returnType.getName().equals("java.util.Optional") ||
+                       (returnType.getPackage() != null && returnType.getPackage().getName().equals("java.util") && returnType.getSimpleName().equals("Optional"))) {
+                // 兼容 Optional
+                try {
+                    return returnType.getMethod("empty").invoke(null);
+                } catch (Exception e) {
+                    return null;
+                }
+            } else if (java.util.List.class.isAssignableFrom(returnType)) {
+                return java.util.Collections.emptyList();
+            } else if (java.util.Set.class.isAssignableFrom(returnType)) {
+                return java.util.Collections.emptySet();
+            } else if (java.util.Map.class.isAssignableFrom(returnType)) {
+                return java.util.Collections.emptyMap();
             }
-            
             return null;
+        }
+
+        // 提供存根注册方法
+        public void setStub(String methodName, Object[] args, Object returnValue) {
+            MethodCallKey key = new MethodCallKey(methodName, args);
+            StubBehavior stub = new StubBehavior();
+            stub.returnValue = returnValue;
+            stubs.put(key, stub);
+        }
+        public void setStubThrow(String methodName, Object[] args, Throwable throwable) {
+            MethodCallKey key = new MethodCallKey(methodName, args);
+            StubBehavior stub = new StubBehavior();
+            stub.throwable = throwable;
+            stubs.put(key, stub);
+        }
+        public void setStubImpl(String methodName, Object[] args, java.util.function.Function<Object[], Object> impl) {
+            MethodCallKey key = new MethodCallKey(methodName, args);
+            StubBehavior stub = new StubBehavior();
+            stub.implementation = impl;
+            stubs.put(key, stub);
+        }
+        // 静态注册入口（便于 Mock/MethodInterceptor 调用）
+        public static void stubReturn(Object mock, String methodName, Object[] args, Object returnValue) {
+            InvocationHandler handler = Proxy.getInvocationHandler(mock);
+            if (handler instanceof MockInvocationHandler) {
+                ((MockInvocationHandler) handler).setStub(methodName, args, returnValue);
+            }
+        }
+        public static void stubThrow(Object mock, String methodName, Object[] args, Throwable throwable) {
+            InvocationHandler handler = Proxy.getInvocationHandler(mock);
+            if (handler instanceof MockInvocationHandler) {
+                ((MockInvocationHandler) handler).setStubThrow(methodName, args, throwable);
+            }
+        }
+        public static void stubImpl(Object mock, String methodName, Object[] args, java.util.function.Function<Object[], Object> impl) {
+            InvocationHandler handler = Proxy.getInvocationHandler(mock);
+            if (handler instanceof MockInvocationHandler) {
+                ((MockInvocationHandler) handler).setStubImpl(methodName, args, impl);
+            }
         }
     }
 } 

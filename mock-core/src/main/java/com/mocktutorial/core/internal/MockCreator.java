@@ -78,6 +78,7 @@ public class MockCreator {
         // Add mock tracking fields
         enhancedClass.addField(CtField.make("private static final java.util.Map _methodCalls = new java.util.HashMap();", enhancedClass));
         enhancedClass.addField(CtField.make("private static final java.util.Map _methodReturns = new java.util.HashMap();", enhancedClass));
+        enhancedClass.addField(CtField.make("private static final java.util.Map _methodStubs = new java.util.HashMap();", enhancedClass));
         
         // Override methods based on settings
         overrideMethods(enhancedClass, originalClass, settings);
@@ -144,47 +145,21 @@ public class MockCreator {
             // Track method calls
             body.append("String methodKey = \"").append(method.getName()).append("\";\n");
             body.append("Object[] args = $args;\n");
-            body.append("java.util.List callList = (java.util.List) _methodCalls.get(methodKey);\n");
-            body.append("if (callList == null) {\n");
-            body.append("    callList = new java.util.ArrayList();\n");
-            body.append("    _methodCalls.put(methodKey, callList);\n");
-            body.append("}\n");
+            body.append("String callKey = methodKey + java.util.Arrays.deepToString(args);\n");
+            body.append("java.util.List callList = (java.util.List) _methodCalls.get(callKey);\n");
+            body.append("if (callList == null) { callList = new java.util.ArrayList(); _methodCalls.put(callKey, callList); }\n");
             body.append("callList.add(args);\n");
             
             // Check if this method has a stubbed return value
-            body.append("if (_methodReturns.containsKey(methodKey)) {\n");
-            body.append("    Object returnValue = _methodReturns.get(methodKey);\n");
-            body.append("    if (returnValue instanceof java.lang.Throwable) {\n");
-            body.append("        throw (java.lang.Throwable) returnValue;\n");
-            body.append("    }\n");
+            body.append("if (_methodStubs.containsKey(callKey)) {\n");
+            body.append("    Object stub = _methodStubs.get(callKey);\n");
+            body.append("    if (stub instanceof java.lang.Throwable) throw (java.lang.Throwable) stub;\n");
             
             // Handle primitive return types
             if (!method.getReturnType().equals(CtClass.voidType)) {
-                body.append("    return ");
-                
-                if (method.getReturnType().isPrimitive()) {
-                    if (method.getReturnType().equals(CtClass.booleanType)) {
-                        body.append("((Boolean) returnValue).booleanValue()");
-                    } else if (method.getReturnType().equals(CtClass.byteType)) {
-                        body.append("((Byte) returnValue).byteValue()");
-                    } else if (method.getReturnType().equals(CtClass.charType)) {
-                        body.append("((Character) returnValue).charValue()");
-                    } else if (method.getReturnType().equals(CtClass.shortType)) {
-                        body.append("((Short) returnValue).shortValue()");
-                    } else if (method.getReturnType().equals(CtClass.intType)) {
-                        body.append("((Integer) returnValue).intValue()");
-                    } else if (method.getReturnType().equals(CtClass.longType)) {
-                        body.append("((Long) returnValue).longValue()");
-                    } else if (method.getReturnType().equals(CtClass.floatType)) {
-                        body.append("((Float) returnValue).floatValue()");
-                    } else if (method.getReturnType().equals(CtClass.doubleType)) {
-                        body.append("((Double) returnValue).doubleValue()");
-                    }
-                } else {
-                    body.append("(").append(method.getReturnType().getName()).append(") returnValue");
-                }
-                
-                body.append(";\n");
+                body.append("    return (" + method.getReturnType().getName() + ") stub;\n");
+            } else {
+                body.append("    return;\n");
             }
             
             body.append("}\n");

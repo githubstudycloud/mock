@@ -3,6 +3,7 @@ package com.mocktutorial.basics;
 import com.mocktutorial.basics.models.User;
 import com.mocktutorial.basics.services.UserService;
 import com.mocktutorial.core.Mock;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -16,6 +17,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class StubTest {
 
+    @AfterEach
+    public void tearDown() {
+        // 清理 Mock 的 ThreadLocal 状态
+        com.mocktutorial.core.Mock.setLastCallContext(null, null, null, null);
+    }
+
     @Test
     public void testMethodStubbing() {
         // 创建一个UserService的mock
@@ -28,21 +35,9 @@ public class StubTest {
         // 测试方法存根 - 这部分现在已有基本实现
         Mock.when(initialResult).thenReturn(Optional.of(testUser));
         
-        try {
-            // 对于目前的实现，这些断言可能会失败，因为我们只保存了返回值映射，但没有拦截实际调用
-            // 我们保留它们作为完整实现的目标
-            Optional<User> returnedUser = userService.findById(1L);
-            System.out.println("返回的用户: " + returnedUser);
-            
-            // 在我们的临时实现中，我们可能需要手动验证映射是否创建成功
-            // 如果返回值不是我们期望的，我们会在控制台输出一条消息
-            if (!returnedUser.isPresent() || !returnedUser.get().equals(testUser)) {
-                System.out.println("注意：方法存根尚未完全实现。预期返回: " + testUser + ", 实际返回: " + returnedUser);
-            }
-        } catch (Exception e) {
-            // 捕获并记录任何错误
-            System.out.println("注意：方法存根尚未完全实现。错误: " + e.getMessage());
-        }
+        Optional<User> returnedUser = userService.findById(1L);
+        assertTrue(returnedUser.isPresent());
+        assertEquals(testUser, returnedUser.get());
     }
     
     @Test
@@ -57,21 +52,8 @@ public class StubTest {
         // 测试异常存根 - 这部分现在已有基本实现
         Mock.when(initialResult).thenThrow(testException);
         
-        try {
-            // 对于目前的实现，这些断言可能会失败，因为我们只保存了异常映射，但没有拦截实际调用
-            // 我们保留它们作为完整实现的目标
-            userService.findById(999L);
-            System.out.println("注意：预期抛出异常，但没有抛出");
-        } catch (RuntimeException e) {
-            // 在我们的临时实现中，我们可能需要手动验证映射是否创建成功
-            // 如果异常不是我们期望的，我们会在控制台输出一条消息
-            if (!e.equals(testException)) {
-                System.out.println("注意：异常存根尚未完全实现。预期异常: " + testException + ", 实际异常: " + e);
-            }
-        } catch (Exception e) {
-            // 捕获并记录任何其他错误
-            System.out.println("注意：异常存根尚未完全实现。错误: " + e.getMessage());
-        }
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> userService.findById(999L));
+        assertEquals("测试异常", thrown.getMessage());
     }
     
     @Test

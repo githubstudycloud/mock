@@ -3,6 +3,7 @@ package com.mocktutorial.core.internal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import com.mocktutorial.core.Mock;
 
 /**
  * Intercepts method calls on mock objects for stubbing and verification.
@@ -51,12 +52,25 @@ public class MethodInterceptor<T> {
         if (!methodCalled) {
             throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
         }
-        
         // 存储方法调用和返回值的映射
         if (lastMethodReturnValue != null) {
             methodReturnValues.put(lastMethodReturnValue, returnValue);
+            Mock.LastCallContext ctx = com.mocktutorial.core.Mock.getLastCallContext();
+            if (ctx != null && ctx.mock != null) {
+                if (java.lang.reflect.Proxy.isProxyClass(ctx.mock.getClass())) {
+                    com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubReturn(ctx.mock, ctx.methodName, ctx.args, returnValue);
+                } else {
+                    // enhanced mock: 反射设置 _methodStubs
+                    try {
+                        java.lang.reflect.Field stubsField = ctx.mock.getClass().getDeclaredField("_methodStubs");
+                        stubsField.setAccessible(true);
+                        java.util.Map stubs = (java.util.Map) stubsField.get(ctx.mock);
+                        String callKey = ctx.methodName + java.util.Arrays.deepToString(ctx.args);
+                        stubs.put(callKey, returnValue);
+                    } catch (Exception e) { throw new RuntimeException(e); }
+                }
+            }
         }
-        
         return new ResultBuilder<>((R) lastMethodReturnValue);
     }
     
@@ -71,12 +85,23 @@ public class MethodInterceptor<T> {
         if (!methodCalled) {
             throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
         }
-        
-        // 存储方法调用和异常的映射
         if (lastMethodReturnValue != null) {
             methodExceptions.put(lastMethodReturnValue, throwable);
+            Mock.LastCallContext ctx = com.mocktutorial.core.Mock.getLastCallContext();
+            if (ctx != null && ctx.mock != null) {
+                if (java.lang.reflect.Proxy.isProxyClass(ctx.mock.getClass())) {
+                    com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubThrow(ctx.mock, ctx.methodName, ctx.args, throwable);
+                } else {
+                    try {
+                        java.lang.reflect.Field stubsField = ctx.mock.getClass().getDeclaredField("_methodStubs");
+                        stubsField.setAccessible(true);
+                        java.util.Map stubs = (java.util.Map) stubsField.get(ctx.mock);
+                        String callKey = ctx.methodName + java.util.Arrays.deepToString(ctx.args);
+                        stubs.put(callKey, throwable);
+                    } catch (Exception e) { throw new RuntimeException(e); }
+                }
+            }
         }
-        
         return new ResultBuilder<>((R) lastMethodReturnValue);
     }
     
@@ -92,12 +117,13 @@ public class MethodInterceptor<T> {
         if (!methodCalled) {
             throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
         }
-        
-        // 存储方法调用和实现的映射
         if (lastMethodReturnValue != null) {
             methodImplementations.put(lastMethodReturnValue, implementation);
+            Mock.LastCallContext ctx = com.mocktutorial.core.Mock.getLastCallContext();
+            if (ctx != null && ctx.mock != null && java.lang.reflect.Proxy.isProxyClass(ctx.mock.getClass())) {
+                com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubImpl(ctx.mock, ctx.methodName, ctx.args, (Function<Object[], Object>) implementation);
+            }
         }
-        
         return new ResultBuilder<>((R) lastMethodReturnValue);
     }
     
@@ -154,5 +180,11 @@ public class MethodInterceptor<T> {
         public R getMethodReturnValue() {
             return methodReturnValue;
         }
+    }
+    
+    public static void clearAllStubs() {
+        methodReturnValues.clear();
+        methodExceptions.clear();
+        methodImplementations.clear();
     }
 } 
