@@ -4,9 +4,16 @@ package com.mocktutorial.basics.models;
  * A simple User model for demonstration purposes
  */
 public class User {
-    private final long id;
-    private final String name;
-    private final String email;
+    private long id;
+    private String name;
+    private String email;
+    
+    /**
+     * 默认构造函数，供Mock框架使用
+     */
+    public User() {
+        this(0, null, null);
+    }
     
     public User(long id, String name, String email) {
         this.id = id;

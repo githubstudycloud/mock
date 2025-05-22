@@ -11,6 +11,9 @@ import com.mocktutorial.core.internal.MockSettings;
  */
 public class Mock {
     
+    // 存储最后调用的方法结果，用于when()方法
+    private static final ThreadLocal<Object> lastMethodCall = new ThreadLocal<>();
+    
     /**
      * Creates a mock instance of the given class.
      * 
@@ -51,15 +54,31 @@ public class Mock {
     }
     
     /**
-     * Prepares for method stubbing or verification.
+     * 记录方法调用，供when()方法使用
+     * 
+     * @param <T> 返回值类型
+     * @param methodCall 方法调用的结果
+     * @return 方法调用的结果（原样返回）
+     */
+    public static <T> T recordMethodCall(T methodCall) {
+        lastMethodCall.set(methodCall);
+        return methodCall;
+    }
+    
+    /**
+     * Prepares for method stubbing.
      * Use this to define behavior for method calls on mocks.
      * 
-     * @param <T> the type of the mock
-     * @param mock the mock object
-     * @return a stub builder
+     * @param <T> the type of the return value
+     * @param methodCall the result of the method call to be stubbed
+     * @return the method interceptor for chaining
      */
-    public static <T> MethodInterceptor<T> when(T mock) {
-        return new MethodInterceptor<>(mock);
+    public static <T> MethodInterceptor<T> when(T methodCall) {
+        @SuppressWarnings("unchecked")
+        T savedMethodCall = (T) lastMethodCall.get();
+        MethodInterceptor<T> interceptor = new MethodInterceptor<>(null);
+        interceptor.recordMethodCall(savedMethodCall != null ? savedMethodCall : methodCall);
+        return interceptor;
     }
     
     /**

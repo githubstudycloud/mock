@@ -78,8 +78,7 @@ public class ComprehensiveTest {
         assertEquals("处理结果: 测试输入", result);
     }
     
-    @Test
-    public void testPrivateMethodMocking() throws Exception {
+        @Test    public void testPrivateMethodMocking() throws Throwable {
         // 4. 私有方法模拟和调用
         TestClass testObj = new TestClass();
         

@@ -60,6 +60,22 @@ public class PrivateMethodMocker {
     }
     
     /**
+     * Gets the configured behavior for a private method.
+     * This method is primarily used for testing purposes.
+     * 
+     * @param mockInstance the mock instance
+     * @param methodName the name of the private method
+     * @return the configured behavior, or null if no behavior was configured
+     */
+    public static Object getConfiguredBehavior(Object mockInstance, String methodName) {
+        Map<String, Object> methodMap = privateMethodReturns.get(mockInstance);
+        if (methodMap != null) {
+            return methodMap.get(methodName);
+        }
+        return null;
+    }
+    
+    /**
      * Handles a private method call.
      * This method would be called from the bytecode-modified private methods.
      * 

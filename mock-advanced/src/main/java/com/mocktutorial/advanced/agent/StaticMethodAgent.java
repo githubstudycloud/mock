@@ -87,8 +87,10 @@ public class StaticMethodAgent {
      * @param ctClass the CtClass containing the method
      * @param method the static method to modify
      * @throws CannotCompileException if the method cannot be modified
+     * @throws NotFoundException if a class or method cannot be found
      */
-    private static void modifyStaticMethod(CtClass ctClass, CtMethod method) throws CannotCompileException {
+    private static void modifyStaticMethod(CtClass ctClass, CtMethod method) 
+            throws CannotCompileException, NotFoundException {
         // Create a unique name for the original method
         String originalMethodName = method.getName() + "$original";
         
@@ -160,8 +162,9 @@ public class StaticMethodAgent {
      *
      * @param body the StringBuilder to append to
      * @param returnType the return type of the method
+     * @throws NotFoundException if a class cannot be found
      */
-    private static void appendCast(StringBuilder body, CtClass returnType) {
+    private static void appendCast(StringBuilder body, CtClass returnType) throws NotFoundException {
         if (returnType.isPrimitive()) {
             if (returnType.equals(CtClass.booleanType)) {
                 body.append("((Boolean)result).booleanValue();\n");

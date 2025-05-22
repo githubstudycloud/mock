@@ -1,5 +1,7 @@
 package com.mocktutorial.core.internal;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -11,6 +13,11 @@ public class MethodInterceptor<T> {
     private final T mock;
     private Object lastMethodReturnValue;
     private boolean methodCalled = false;
+    
+    // 存储方法调用和返回值的映射
+    private static final Map<Object, Object> methodReturnValues = new HashMap<>();
+    private static final Map<Object, Throwable> methodExceptions = new HashMap<>();
+    private static final Map<Object, Function<Object[], ?>> methodImplementations = new HashMap<>();
     
     /**
      * Creates a new method interceptor for the given mock.
@@ -45,8 +52,10 @@ public class MethodInterceptor<T> {
             throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
         }
         
-        // Set up the mock to return the specified value
-        // This will be implemented later with actual bytecode manipulation
+        // 存储方法调用和返回值的映射
+        if (lastMethodReturnValue != null) {
+            methodReturnValues.put(lastMethodReturnValue, returnValue);
+        }
         
         return new ResultBuilder<>((R) lastMethodReturnValue);
     }
@@ -63,8 +72,10 @@ public class MethodInterceptor<T> {
             throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
         }
         
-        // Set up the mock to throw the specified exception
-        // This will be implemented later with actual bytecode manipulation
+        // 存储方法调用和异常的映射
+        if (lastMethodReturnValue != null) {
+            methodExceptions.put(lastMethodReturnValue, throwable);
+        }
         
         return new ResultBuilder<>((R) lastMethodReturnValue);
     }
@@ -82,10 +93,45 @@ public class MethodInterceptor<T> {
             throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
         }
         
-        // Set up the mock to use the specified implementation
-        // This will be implemented later with actual bytecode manipulation
+        // 存储方法调用和实现的映射
+        if (lastMethodReturnValue != null) {
+            methodImplementations.put(lastMethodReturnValue, implementation);
+        }
         
         return new ResultBuilder<>((R) lastMethodReturnValue);
+    }
+    
+    /**
+     * 检查方法调用是否有配置的返回值
+     * 
+     * @param methodCall 方法调用的结果
+     * @return 是否有配置的返回值
+     */
+    public static boolean hasReturnValue(Object methodCall) {
+        return methodReturnValues.containsKey(methodCall) || 
+               methodExceptions.containsKey(methodCall) || 
+               methodImplementations.containsKey(methodCall);
+    }
+    
+    /**
+     * 获取方法调用的配置返回值
+     * 
+     * @param methodCall 方法调用的结果
+     * @param args 方法调用的参数
+     * @return 配置的返回值
+     * @throws Throwable 如果配置了异常则抛出
+     */
+    public static Object getReturnValue(Object methodCall, Object[] args) throws Throwable {
+        if (methodExceptions.containsKey(methodCall)) {
+            throw methodExceptions.get(methodCall);
+        }
+        
+        if (methodImplementations.containsKey(methodCall)) {
+            Function<Object[], ?> implementation = methodImplementations.get(methodCall);
+            return implementation.apply(args);
+        }
+        
+        return methodReturnValues.get(methodCall);
     }
     
     /**

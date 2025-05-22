@@ -3,6 +3,8 @@ package com.mocktutorial.core.internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mocktutorial.core.Mock;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -70,7 +72,19 @@ public class MockitoAdapter {
                 return "Mock of " + mockedInterface.getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
             }
             
-            // Check if this method has a stubbed return value
+            // 首先尝试执行方法并记录调用
+            Object result = getDefaultReturnValue(method.getReturnType());
+            
+            // 记录方法调用，以便when()方法可以使用
+            Mock.recordMethodCall(result);
+            
+            // 检查是否有为此方法配置的存根行为
+            if (MethodInterceptor.hasReturnValue(result)) {
+                // 如果有，使用配置的存根行为
+                return MethodInterceptor.getReturnValue(result, args);
+            }
+            
+            // 检查本地存根
             String methodKey = method.getName();
             if (methodReturns.containsKey(methodKey)) {
                 Object returnValue = methodReturns.get(methodKey);
@@ -80,9 +94,16 @@ public class MockitoAdapter {
                 return returnValue;
             }
             
-            // Return default values for methods with return types
-            Class<?> returnType = method.getReturnType();
-            
+            return result;
+        }
+        
+        /**
+         * 获取方法返回类型的默认值
+         *
+         * @param returnType 返回类型
+         * @return 默认值
+         */
+        private Object getDefaultReturnValue(Class<?> returnType) {
             if (returnType.equals(void.class)) {
                 return null;
             } else if (returnType.equals(boolean.class) || returnType.equals(Boolean.class)) {
