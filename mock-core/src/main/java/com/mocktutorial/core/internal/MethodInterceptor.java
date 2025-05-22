@@ -12,27 +12,18 @@ import com.mocktutorial.core.Mock;
  */
 public class MethodInterceptor<T> {
     private final T mock;
-    private Object lastMethodReturnValue;
-    private boolean methodCalled = false;
+    private final String methodName;
+    private final Object[] args;
     
     /**
      * Creates a new method interceptor for the given mock.
      * 
      * @param mock the mock object
      */
-    public MethodInterceptor(T mock) {
+    public MethodInterceptor(T mock, String methodName, Object[] args) {
         this.mock = mock;
-    }
-    
-    /**
-     * Records the result of a method call for later verification.
-     * 
-     * @param <R> the return type of the method
-     * @param returnValue the value returned by the method
-     */
-    public <R> void recordMethodCall(R returnValue) {
-        this.lastMethodReturnValue = returnValue;
-        this.methodCalled = true;
+        this.methodName = methodName;
+        this.args = args == null ? new Object[0] : args.clone();
     }
     
     /**
@@ -44,26 +35,20 @@ public class MethodInterceptor<T> {
      */
     @SuppressWarnings("unchecked")
     public <R> ResultBuilder<R> thenReturn(R returnValue) {
-        if (!methodCalled) {
-            throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
-        }
-        if (lastMethodReturnValue != null) {
-            Mock.LastCallContext ctx = com.mocktutorial.core.Mock.getLastCallContext();
-            if (ctx != null && ctx.mock != null) {
-                if (java.lang.reflect.Proxy.isProxyClass(ctx.mock.getClass())) {
-                    com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubReturn(ctx.mock, ctx.methodName, ctx.args, returnValue);
-                } else {
-                    try {
-                        java.lang.reflect.Field stubsField = ctx.mock.getClass().getDeclaredField("_methodStubs");
-                        stubsField.setAccessible(true);
-                        java.util.Map stubs = (java.util.Map) stubsField.get(ctx.mock);
-                        String callKey = ctx.methodName + java.util.Arrays.deepToString(ctx.args);
-                        stubs.put(callKey, returnValue);
-                    } catch (Exception e) { throw new RuntimeException(e); }
-                }
+        if (mock != null) {
+            if (java.lang.reflect.Proxy.isProxyClass(mock.getClass())) {
+                com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubReturn(mock, methodName, args, returnValue);
+            } else {
+                try {
+                    java.lang.reflect.Field stubsField = mock.getClass().getDeclaredField("_methodStubs");
+                    stubsField.setAccessible(true);
+                    java.util.Map stubs = (java.util.Map) stubsField.get(mock);
+                    String callKey = methodName + java.util.Arrays.deepToString(args);
+                    stubs.put(callKey, returnValue);
+                } catch (Exception e) { throw new RuntimeException(e); }
             }
         }
-        return new ResultBuilder<>((R) lastMethodReturnValue);
+        return new ResultBuilder<>(null);
     }
     
     /**
@@ -74,26 +59,20 @@ public class MethodInterceptor<T> {
      */
     @SuppressWarnings("unchecked")
     public <R> ResultBuilder<R> thenThrow(Throwable throwable) {
-        if (!methodCalled) {
-            throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
-        }
-        if (lastMethodReturnValue != null) {
-            Mock.LastCallContext ctx = com.mocktutorial.core.Mock.getLastCallContext();
-            if (ctx != null && ctx.mock != null) {
-                if (java.lang.reflect.Proxy.isProxyClass(ctx.mock.getClass())) {
-                    com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubThrow(ctx.mock, ctx.methodName, ctx.args, throwable);
-                } else {
-                    try {
-                        java.lang.reflect.Field stubsField = ctx.mock.getClass().getDeclaredField("_methodStubs");
-                        stubsField.setAccessible(true);
-                        java.util.Map stubs = (java.util.Map) stubsField.get(ctx.mock);
-                        String callKey = ctx.methodName + java.util.Arrays.deepToString(ctx.args);
-                        stubs.put(callKey, throwable);
-                    } catch (Exception e) { throw new RuntimeException(e); }
-                }
+        if (mock != null) {
+            if (java.lang.reflect.Proxy.isProxyClass(mock.getClass())) {
+                com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubThrow(mock, methodName, args, throwable);
+            } else {
+                try {
+                    java.lang.reflect.Field stubsField = mock.getClass().getDeclaredField("_methodStubs");
+                    stubsField.setAccessible(true);
+                    java.util.Map stubs = (java.util.Map) stubsField.get(mock);
+                    String callKey = methodName + java.util.Arrays.deepToString(args);
+                    stubs.put(callKey, throwable);
+                } catch (Exception e) { throw new RuntimeException(e); }
             }
         }
-        return new ResultBuilder<>((R) lastMethodReturnValue);
+        return new ResultBuilder<>(null);
     }
     
     /**
@@ -105,26 +84,20 @@ public class MethodInterceptor<T> {
      */
     @SuppressWarnings("unchecked")
     public <R> ResultBuilder<R> thenImplement(Function<Object[], R> implementation) {
-        if (!methodCalled) {
-            throw new IllegalStateException("No method call recorded. Make sure to call a method on the mock first.");
-        }
-        if (lastMethodReturnValue != null) {
-            Mock.LastCallContext ctx = com.mocktutorial.core.Mock.getLastCallContext();
-            if (ctx != null && ctx.mock != null) {
-                if (java.lang.reflect.Proxy.isProxyClass(ctx.mock.getClass())) {
-                    com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubImpl(ctx.mock, ctx.methodName, ctx.args, (Function<Object[], Object>) implementation);
-                } else {
-                    try {
-                        java.lang.reflect.Field stubsField = ctx.mock.getClass().getDeclaredField("_methodStubs");
-                        stubsField.setAccessible(true);
-                        java.util.Map stubs = (java.util.Map) stubsField.get(ctx.mock);
-                        String callKey = ctx.methodName + java.util.Arrays.deepToString(ctx.args);
-                        stubs.put(callKey, implementation);
-                    } catch (Exception e) { throw new RuntimeException(e); }
-                }
+        if (mock != null) {
+            if (java.lang.reflect.Proxy.isProxyClass(mock.getClass())) {
+                com.mocktutorial.core.internal.MockitoAdapter.MockInvocationHandler.stubImpl(mock, methodName, args, (Function<Object[], Object>) implementation);
+            } else {
+                try {
+                    java.lang.reflect.Field stubsField = mock.getClass().getDeclaredField("_methodStubs");
+                    stubsField.setAccessible(true);
+                    java.util.Map stubs = (java.util.Map) stubsField.get(mock);
+                    String callKey = methodName + java.util.Arrays.deepToString(args);
+                    stubs.put(callKey, implementation);
+                } catch (Exception e) { throw new RuntimeException(e); }
             }
         }
-        return new ResultBuilder<>((R) lastMethodReturnValue);
+        return new ResultBuilder<>(null);
     }
     
     /**

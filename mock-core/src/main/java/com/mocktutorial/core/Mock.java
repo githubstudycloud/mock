@@ -11,25 +11,6 @@ import com.mocktutorial.core.internal.MockSettings;
  */
 public class Mock {
     
-    // 存储最后调用的方法结果，用于when()方法
-    private static final ThreadLocal<Object> lastMethodCall = new ThreadLocal<>();
-    
-    // 新增：用于存储完整方法调用上下文
-    private static final ThreadLocal<LastCallContext> lastCallContext = new ThreadLocal<>();
-    
-    public static class LastCallContext {
-        public final Object mock;
-        public final String methodName;
-        public final Object[] args;
-        public final Object returnValue;
-        public LastCallContext(Object mock, String methodName, Object[] args, Object returnValue) {
-            this.mock = mock;
-            this.methodName = methodName;
-            this.args = args;
-            this.returnValue = returnValue;
-        }
-    }
-    
     /**
      * Creates a mock instance of the given class.
      * 
@@ -70,55 +51,17 @@ public class Mock {
     }
     
     /**
-     * 记录方法调用，供when()方法使用
-     * 
-     * @param <T> 返回值类型
-     * @param methodCall 方法调用的结果
-     * @return 方法调用的结果（原样返回）
-     */
-    public static <T> T recordMethodCall(T methodCall) {
-        lastMethodCall.set(methodCall);
-        // 仅支持 JDK Proxy mock，记录上下文
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        // 查找调用 mock.method 的栈帧
-        for (StackTraceElement elem : stack) {
-            if (elem.getClassName().contains("$Proxy")) {
-                // 这里无法直接获取 mock/方法名/参数，只能在 InvocationHandler 里设置
-                break;
-            }
-        }
-        // 这里实际的 mock/方法名/参数应由 InvocationHandler 设置
-        // 先留空，稍后在 InvocationHandler 里补充
-        lastCallContext.set(new LastCallContext(null, null, null, methodCall));
-        return methodCall;
-    }
-    
-    // 新增：供 InvocationHandler 设置完整上下文
-    public static void setLastCallContext(Object mock, String methodName, Object[] args, Object returnValue) {
-        lastCallContext.set(new LastCallContext(mock, methodName, args, returnValue));
-    }
-    
-    public static LastCallContext getLastCallContext() {
-        return lastCallContext.get();
-    }
-    
-    /**
      * Prepares for method stubbing.
      * Use this to define behavior for method calls on mocks.
      * 
      * @param <T> the type of the return value
-     * @param methodCall the result of the method call to be stubbed
+     * @param mock the mock object
+     * @param methodName the name of the method to be stubbed
+     * @param args the arguments to the method
      * @return the method interceptor for chaining
      */
-    public static <T> MethodInterceptor<T> when(T methodCall) {
-        @SuppressWarnings("unchecked")
-        T savedMethodCall = (T) lastMethodCall.get();
-        // 取出 mock 实例
-        LastCallContext ctx = getLastCallContext();
-        T mock = ctx != null && ctx.mock != null ? (T) ctx.mock : null;
-        MethodInterceptor<T> interceptor = new MethodInterceptor<>(mock);
-        interceptor.recordMethodCall(savedMethodCall != null ? savedMethodCall : methodCall);
-        return interceptor;
+    public static <T> MethodInterceptor<T> when(T mock, String methodName, Object... args) {
+        return new MethodInterceptor<>(mock, methodName, args);
     }
     
     /**

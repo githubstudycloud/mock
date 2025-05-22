@@ -3,7 +3,6 @@ package com.mocktutorial.basics;
 import com.mocktutorial.basics.models.User;
 import com.mocktutorial.basics.services.UserService;
 import com.mocktutorial.core.Mock;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -17,12 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class StubTest {
 
-    @AfterEach
-    public void tearDown() {
-        // 清理 Mock 的 ThreadLocal 状态
-        com.mocktutorial.core.Mock.setLastCallContext(null, null, null, null);
-    }
-
     @Test
     public void testMethodStubbing() {
         // 创建一个UserService的mock
@@ -30,10 +23,7 @@ public class StubTest {
         User testUser = new User(1L, "Test User", "test@example.com");
         
         // 先调用方法以便记录调用
-        Optional<User> initialResult = userService.findById(1L);
-        
-        // 测试方法存根 - 这部分现在已有基本实现
-        Mock.when(initialResult).thenReturn(Optional.of(testUser));
+        Mock.when(userService, "findById", 1L).thenReturn(Optional.of(testUser));
         
         Optional<User> returnedUser = userService.findById(1L);
         assertTrue(returnedUser.isPresent());
@@ -47,10 +37,7 @@ public class StubTest {
         RuntimeException testException = new RuntimeException("测试异常");
         
         // 先调用方法以便记录调用
-        Optional<User> initialResult = userService.findById(999L);
-        
-        // 测试异常存根 - 这部分现在已有基本实现
-        Mock.when(initialResult).thenThrow(testException);
+        Mock.when(userService, "findById", 999L).thenThrow(testException);
         
         RuntimeException thrown = assertThrows(RuntimeException.class, () -> userService.findById(999L));
         assertEquals("测试异常", thrown.getMessage());
